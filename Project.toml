@@ -12,6 +12,7 @@ RigidBodyTools = "befc5f09-81d5-499c-a4b2-d0464ba9f9c8"
 
 [compat]
 ConstrainedSystems = "0.1"
+Reexport = "0.2"
 julia = "1"
 
 [extras]
