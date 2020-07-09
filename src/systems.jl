@@ -1,6 +1,6 @@
-import LinearAlgebra: ldiv!, I
+import LinearAlgebra: I, \, ldiv!
 
-struct PotentialFlowSystem{T}
+struct PotentialFlowSystem{T,Nk}
     S::SaddleSystem{T}
     f₀::AbstractVector{T}
     ekvec::AbstractVector{<:AbstractVector}
@@ -9,19 +9,20 @@ struct PotentialFlowSystem{T}
 end
 
 function PotentialFlowSystem(S::SaddleSystem{T}, f₀::AbstractVector{T}, ekvec::AbstractVector{<:AbstractVector}, dkvec::AbstractVector{<:AbstractMatrix}) where T
-    Nk = length(ekvec)
     N = length(f₀)
+    Nk = length(ekvec)
 
-    #ONLY WORKS FOR A SINGLE EDGE RELEASE FOR NOW!
+    # ONLY WORKS FOR A SINGLE EDGE RELEASE FOR NOW!
     @assert Nk < 2 "Only single edge vortex release implemented!"
 
 #     fvec = Array{ScalarData{N,T,Array{T,1}},1}(undef, Nk)
     f̃kvec = fill(ScalarData(N),Nk)
 
-    return PotentialFlowSystem{T}(S,f₀,ekvec,dkvec,f̃kvec)
+    return PotentialFlowSystem{T,Nk}(S,f₀,ekvec,dkvec,f̃kvec)
 end
 
-function ldiv!(sol::Tuple{AbstractMatrix, AbstractVector, AbstractVector, AbstractVector}, sys::PotentialFlowSystem, rhs::Tuple{AbstractMatrix, AbstractVector, AbstractVector, Real})
+function ldiv!(sol::Tuple{AbstractMatrix, AbstractVector, AbstractVector, AbstractVector}, sys::PotentialFlowSystem{T,Nk}, rhs::Tuple{AbstractMatrix, AbstractVector, AbstractVector, Real}) where {T,Nk}
+
     @unpack S, f₀, ekvec, dkvec, f̃kvec = sys
     ψ, f̃, ψ₀, δΓkvec = sol
     negw, ψb, f̃limk, negΓw = rhs
@@ -35,7 +36,6 @@ function ldiv!(sol::Tuple{AbstractMatrix, AbstractVector, AbstractVector, Abstra
     f̃ .= constraint(tempsol)
 
     N = length(f₀)
-    Nk = length(ekvec)
 
     zerovec = ScalarData(N)
     zerovec .= 0.0
@@ -60,5 +60,13 @@ function ldiv!(sol::Tuple{AbstractMatrix, AbstractVector, AbstractVector, Abstra
 
     ψ .= reshape(-S.A⁻¹*(-reshape(negw,:) + S.B₁ᵀ*f̃ + reshape(dkvec[k]*δΓkvec[k],:)),size(ψ))
 
+    return sol
+end
+
+function (\)(sys::PotentialFlowSystem{T,Nk},rhs::Tuple{AbstractMatrix, AbstractVector, AbstractVector, Real}) where {T,Nk}
+    negw, ψb, f̃limk, negΓw = rhs
+    # ONLY WORKS FOR A SINGLE BODY FOR NOW!
+    sol = (similar(negw),similar(ψb),Array{T}(undef, 1),Array{T}(undef, Nk))
+    ldiv!(sol,sys,rhs)
     return sol
 end
