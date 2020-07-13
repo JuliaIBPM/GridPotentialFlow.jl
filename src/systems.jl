@@ -1,6 +1,6 @@
 import LinearAlgebra: I, \, ldiv!
 
-struct PotentialFlowSystem{T,Nk}
+struct PotentialFlowSystem{Nk,T}
     S::SaddleSystem{T}
     f₀::AbstractVector{T}
     ekvec::AbstractVector{<:AbstractVector}
@@ -18,10 +18,10 @@ function PotentialFlowSystem(S::SaddleSystem{T}, f₀::AbstractVector{T}, ekvec:
 #     fvec = Array{ScalarData{N,T,Array{T,1}},1}(undef, Nk)
     f̃kvec = fill(ScalarData(N),Nk)
 
-    return PotentialFlowSystem{T,Nk}(S,f₀,ekvec,dkvec,f̃kvec)
+    return PotentialFlowSystem{Nk,T}(S,f₀,ekvec,dkvec,f̃kvec)
 end
 
-function ldiv!(sol::Tuple{AbstractMatrix, AbstractVector, AbstractVector, AbstractVector}, sys::PotentialFlowSystem{T,Nk}, rhs::Tuple{AbstractMatrix, AbstractVector, AbstractVector, Real}) where {T,Nk}
+function ldiv!(sol::Tuple{AbstractMatrix, AbstractVector, AbstractVector, AbstractVector}, sys::PotentialFlowSystem{Nk,T}, rhs::Tuple{AbstractMatrix, AbstractVector, AbstractVector, Real}) where {Nk,T}
 
     @unpack S, f₀, ekvec, dkvec, f̃kvec = sys
     ψ, f̃, ψ₀, δΓkvec = sol
@@ -63,7 +63,7 @@ function ldiv!(sol::Tuple{AbstractMatrix, AbstractVector, AbstractVector, Abstra
     return sol
 end
 
-function (\)(sys::PotentialFlowSystem{T,Nk},rhs::Tuple{AbstractMatrix, AbstractVector, AbstractVector, Real}) where {T,Nk}
+function (\)(sys::PotentialFlowSystem{Nk,T},rhs::Tuple{AbstractMatrix, AbstractVector, AbstractVector, Real}) where {Nk,T}
     negw, ψb, f̃limk, negΓw = rhs
     # ONLY WORKS FOR A SINGLE BODY FOR NOW!
     sol = (similar(negw),similar(ψb),Array{T}(undef, 1),Array{T}(undef, Nk))
