@@ -1,10 +1,10 @@
-struct BodyUnitVector{Nk,T,Tk}
-    data::ScalarData{Nk,T}
-    k::Tk
+struct BodyUnitVector{TF,TK}
+    data::TF
+    k::TK
     closuretype::Type{<:RigidBodyTools.BodyClosureType}
 end
 
-function BodyUnitVector(Nk::Int,k::Int,closuretype::Type{<:RigidBodyTools.BodyClosureType})
+function BodyUnitVector(Nk::Integer,k::Integer,closuretype::Type{<:RigidBodyTools.BodyClosureType})
 
     @assert 1 <= k <= Nk "k has to be in the range 1:Nk"
 
@@ -26,5 +26,5 @@ function BodyUnitVector(Nk::Int,k::Int,closuretype::Type{<:RigidBodyTools.BodyCl
         error
     end
 
-    return BodyUnitVector{Nk,Float64,Int64}(data,k,closuretype)
+    return BodyUnitVector{typeof(data),typeof(k)}(data,k,closuretype)
 end

@@ -2,14 +2,18 @@ module GridPotentialFlow
 
 using Reexport
 using UnPack
+using RecursiveArrayTools
 
 @reexport using CartesianGrids
 @reexport using RigidBodyTools
 @reexport using ConstrainedSystems
 
-export PotentialFlowSystem, Vortex
+export BodyUnitVector, SolutionVector, RightHandSideVector, UnregularizedPotentialFlowSystem, RegularizedPotentialFlowSystem, Vortex, PotentialFlowSystem
 
-include("systems.jl")
+include("bodyunitvectors.jl")
+include("systemvectors.jl")
 include("vortices.jl")
+include("systems.jl")
+
 
 end

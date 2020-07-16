@@ -1,55 +1,34 @@
 import LinearAlgebra: I, \, ldiv!
 
-abstract type PotentialFlowSystem end
+# abstract type PotentialFlowSystem end
 
-struct UnregularizedPotentialFlowSystem{N,T} <: PotentialFlowSystem
-    S::SaddleSystem{T}
+struct UnregularizedPotentialFlowSystem
+    S::SaddleSystem
 end
 
-struct RegularizedPotentialFlowSystem{N,Nk,T,Tk} <: PotentialFlowSystem
-    S::SaddleSystem{T}
-    f₀::ScalarData{N,T}
-    ekvec::Vector{BodyUnitVector{N,T,Tk}}
-    dkvec::Vector{Nodes{Dual,Nx,Ny,T}}
-    f̃kvec::Vector{ScalarData{N,T}}
+struct RegularizedPotentialFlowSystem{TU,TF,TK}
+    S::SaddleSystem
+    f₀::TF
+    ek_vec::Vector{BodyUnitVector{TF,TK}}
+    dk_vec::Union{Nothing,Vector{TU}}
+    f̃k_vec::Union{Nothing,Vector{TF}}
 end
 
-function PotentialFlowSystem(S::SaddleSystem{T,Ns,Nc}) where {T,Ns,Nc}
-    return UnregularizedPotentialFlowSystem{Nc,T}(S)
+function PotentialFlowSystem(S::SaddleSystem{T,Ns,Nc,TU,TF}) where {T,Ns,Nc,TU,TF}
+    return UnregularizedPotentialFlowSystem(S)
 end
 
-function PotentialFlowSystem(S::SaddleSystem{T,Ns,Nc}, f₀::ScalarData{N,T}) where {N,Nc,Ns,T}
-    return RegularizedPotentialFlowSystem{Nc,0,T,Int64}(S,f₀,BodyUnitVector[],Nodes[],ScalarData[])
+function PotentialFlowSystem(S::SaddleSystem{T,Ns,Nc,TU,TF}, f₀::TF, ek_vec::Vector{BodyUnitVector{TF,TK}}) where {T,Ns,Nc,TU,TF,TK}
+    return RegularizedPotentialFlowSystem{TU,TF,TK}(S,f₀,ek_vec,nothing,nothing)
 end
 
-function PotentialFlowSystem(S::SaddleSystem{T,Ns,Nc}, f₀::ScalarData{N,T}, ekvec::Vector{BodyUnitVector{N,T,Tk}}, dkvec::Vector{<:Nodes{Dual,Nx,Ny,T}}) where {N,Nc,Ns,Nx,Ny,T,Tk}
+function PotentialFlowSystem(S::SaddleSystem{T,Ns,Nc,TU,TF}, f₀::TF, ek_vec::Vector{BodyUnitVector{TF,TK}}, dk_vec::Vector{TF}) where {T,Ns,Nc,TU,TF,TK}
     size(ekvec) == size(dkvec) || error("Incompatible number of elements in ekvec and dkvec")
-    Nk = length(ekvec)
-    f̃kvec = fill(ScalarData(N,dtype=T),Nk)
-    return RegularizedPotentialFlowSystem{N,Nk,T,Tk}(S, f₀, ekvec, dkvec, f̃kvec)
+    NK = length(ekvec)
+    f̃kvec = fill(ScalarData(N,dtype=T),NK)
+    return RegularizedPotentialFlowSystem{TU,TF,TK}(S, f₀, ekvec, dkvec, f̃kvec)
 end
 
-# function PotentialFlowSystem(S::SaddleSystem{T,Ns,Nc}, f₀::ScalarData{N,T}, ekvec::Vector{BodyUnitVector{N,T,Tk}},
-#                              dkvec::Vector{Nodes}) where {N,Nc,Ns,T,Tk}
-#     size(ekvec) == size(dkvec) || error("Incompatible number of elements in ekvec and dkvec")
-#     Nk = length(ekvec)
-#     f̃kvec = fill(ScalarData(N,dtype=T),Nk)
-#     return RegularizedPotentialFlowSystem{N,Nk,T,Tk}(S, f₀, ekvec, dkvec, f̃kvec)
-# end
-
-# function PotentialFlowSystem(S::SaddleSystem{T}, f₀::AbstractVector{T}, ekvec::AbstractVector{<:AbstractVector}, dkvec::AbstractVector{<:AbstractMatrix}) where T
-#     N = length(f₀)
-#     Nk = length(ekvec)
-#
-#     # ONLY WORKS FOR A SINGLE EDGE RELEASE FOR NOW!
-#     @assert Nk < 2 "Only single edge vortex release implemented!"
-#
-# #     fvec = Array{ScalarData{N,T,Array{T,1}},1}(undef, Nk)
-#     f̃kvec = fill(ScalarData(N),Nk)
-#
-#     return PotentialFlowSystem{Nk,T}(S,f₀,ekvec,dkvec,f̃kvec)
-# end
-#
 # function ldiv!(sol::Tuple{AbstractMatrix, AbstractVector, AbstractVector, AbstractVector}, sys::PotentialFlowSystem{Nk,T}, rhs::Tuple{AbstractMatrix, AbstractVector, AbstractVector, Real}) where {Nk,T}
 #
 #     @unpack S, f₀, ekvec, dkvec, f̃kvec = sys
