@@ -22,11 +22,11 @@ function PotentialFlowSystem(S::SaddleSystem{T,Ns,Nc,TU,TF}, f₀::TF, ek_vec::V
     return RegularizedPotentialFlowSystem{TU,TF,TK}(S,f₀,ek_vec,nothing,nothing)
 end
 
-function PotentialFlowSystem(S::SaddleSystem{T,Ns,Nc,TU,TF}, f₀::TF, ek_vec::Vector{BodyUnitVector{TF,TK}}, dk_vec::Vector{TF}) where {T,Ns,Nc,TU,TF,TK}
-    size(ekvec) == size(dkvec) || error("Incompatible number of elements in ekvec and dkvec")
-    NK = length(ekvec)
-    f̃kvec = fill(ScalarData(N,dtype=T),NK)
-    return RegularizedPotentialFlowSystem{TU,TF,TK}(S, f₀, ekvec, dkvec, f̃kvec)
+function PotentialFlowSystem(S::SaddleSystem{T,Ns,Nc,TU,TF}, f₀::TF, ek_vec::Vector{BodyUnitVector{TF,TK}}, dk_vec::Vector{TU}) where {T,Ns,Nc,TU,TF,TK}
+    size(ek_vec) == size(dk_vec) || error("Incompatible number of elements in ekvec and dkvec")
+    Nk = length(ek_vec)
+    f̃k_vec = Vector{TF}(undef, Nk)
+    return RegularizedPotentialFlowSystem{TU,TF,TK}(S, f₀, ek_vec, dk_vec, f̃k_vec)
 end
 
 # function ldiv!(sol::Tuple{AbstractMatrix, AbstractVector, AbstractVector, AbstractVector}, sys::PotentialFlowSystem{Nk,T}, rhs::Tuple{AbstractMatrix, AbstractVector, AbstractVector, Real}) where {Nk,T}
