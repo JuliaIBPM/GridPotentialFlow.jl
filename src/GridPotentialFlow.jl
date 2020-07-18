@@ -8,10 +8,11 @@ using RecursiveArrayTools
 @reexport using RigidBodyTools
 @reexport using ConstrainedSystems
 
-export BodyUnitVector, SolutionVector, RightHandSideVector, UnregularizedPotentialFlowSystem, RegularizedPotentialFlowSystem, Vortex, PotentialFlowSystem
+export BodyUnitVector, PotentialFlowSolution, PotentialFlowRHS, UnregularizedPotentialFlowSystem, RegularizedPotentialFlowSystem, Vortex, PotentialFlowSystem
 
 include("bodyunitvectors.jl")
-include("systemvectors.jl")
+include("righthandside.jl")
+include("solution.jl")
 include("vortices.jl")
 include("systems.jl")
 
