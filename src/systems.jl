@@ -17,6 +17,20 @@ struct RegularizedPotentialFlowSystem{TU,TF}
     ek_vec::Vector{BodyUnitVector{TF}}
     dk_vec::Union{Nothing,Vector{TU}}
     f̃k_vec::Union{Nothing,Vector{TF}}
+    zeros::TF
+    ones::TF
+
+    function RegularizedPotentialFlowSystem(S::SaddleSystem{T,Ns,Nc,TU,TF}, f₀::TF, ek_vec::Vector{BodyUnitVector{TF}}, dk_vec::Union{Nothing,Vector{TU}}, f̃k_vec::Union{Nothing,Vector{TF}}) where {T,Ns,Nc,TU,TF}
+        (isnothing(dk_vec) && !isnothing(f̃k_vec)) && error("dk_vec is nothing, f̃k_vec is a vector")
+        (!isnothing(dk_vec) && isnothing(f̃k_vec)) && error("dk_vec is a vector, f̃k_vec is nothing")
+        if !isnothing(dk_vec) size(ek_vec) == size(dk_vec) || error("Incompatible number of elements in ek_vec and dk_vec") end
+        if !isnothing(dk_vec) size(ek_vec) == size(f̃k_vec) || error("Incompatible number of elements in ek_vec and f̃k_vec") end
+        zeros = TF()
+        zeros .= 0
+        ones = TF()
+        ones .= 1
+        new{TU,TF}(S, f₀, ek_vec, dk_vec, f̃k_vec, zeros, ones)
+    end
 end
 
 function PotentialFlowSystem(S::SaddleSystem{T,Ns,Nc,TU,TF}) where {T,Ns,Nc,TU,TF}
@@ -24,24 +38,33 @@ function PotentialFlowSystem(S::SaddleSystem{T,Ns,Nc,TU,TF}) where {T,Ns,Nc,TU,T
 end
 
 function PotentialFlowSystem(S::SaddleSystem{T,Ns,Nc,TU,TF}, f₀::TF, ek_vec::Vector{BodyUnitVector{TF}}) where {T,Ns,Nc,TU,TF}
-    return RegularizedPotentialFlowSystem{TU,TF}(S,f₀,ek_vec,nothing,nothing)
+    return RegularizedPotentialFlowSystem(S,f₀,ek_vec,nothing,nothing)
 end
 
-function PotentialFlowSystem(S::SaddleSystem{T,Ns,Nc,TU,TF}, f₀::TF, ek_vec::Vector{BodyUnitVector{TF}}, dk_vec::Vector{TU}) where {T,Ns,Nc,TU,TF}
-    size(ek_vec) == size(dk_vec) || error("Incompatible number of elements in ekvec and dkvec")
+function PotentialFlowSystem(S::SaddleSystem{T,Ns,Nc,TU,TF}, f₀::TF, ek_vec::Union{Nothing,Vector{BodyUnitVector{TF}}}, dk_vec::Union{Nothing,Vector{TU}}) where {T,Ns,Nc,TU,TF}
     Nk = length(ek_vec)
     f̃k_vec = Vector{TF}(undef, Nk)
-    return RegularizedPotentialFlowSystem{TU,TF}(S, f₀, ek_vec, dk_vec, f̃k_vec)
+    return RegularizedPotentialFlowSystem(S,f₀,ek_vec,dk_vec,f̃k_vec)
 end
+
+# function PotentialFlowSystem(S::SaddleSystem{T,Ns,Nc,TU,TF}, f₀::TF, ek_vec::Vector{BodyUnitVector{TF}}, dk_vec::Vector{TU}) where {T,Ns,Nc,TU,TF}
+#     size(ek_vec) == size(dk_vec) || error("Incompatible number of elements in ekvec and dkvec")
+#     Nk = length(ek_vec)
+#     f̃k_vec = Vector{TF}(undef, Nk)
+#     return RegularizedPotentialFlowSystem{TU,TF}(S, f₀, ek_vec, dk_vec, f̃k_vec)
+# end
 
 function ldiv!(sol::PotentialFlowSolution{TU,TF}, sys::RegularizedPotentialFlowSystem{TU,TF}, rhs::PotentialFlowRHS{TU,TF}) where {TU,TF}
 
+    @unpack S, f₀, ek_vec, dk_vec, f̃k_vec, zeros, ones = sys
+    @unpack ψ, f̃, ψ₀, δΓ_vec = sol
+    @unpack w, ψb, f̃min, f̃max = rhs
+
     # TODO: maybe type check here instead of in arguments list?
 
+
     # # Streamfunction and vortex sheet strength without shedded vortices
-    # tempsol = S\SaddleVector(negw,ψb);
-    # ψ .= state(tempsol)
-    # f̃ .= constraint(tempsol)
+    # ψ,f̃ = sys.S\(-w,ψb);
     #
     # N = length(f₀)
     #
