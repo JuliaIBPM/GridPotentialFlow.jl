@@ -1,6 +1,6 @@
-struct BodyUnitVector{TF,TK}
+struct BodyUnitVector{TF}
     data::TF
-    k::TK
+    k::Integer
     closuretype::Type{<:RigidBodyTools.BodyClosureType}
 end
 
@@ -19,12 +19,12 @@ function BodyUnitVector(Nk::Integer,k::Integer,closuretype::Type{<:RigidBodyTool
             data[Nk-1] = -0.5
             data[Nk] = 1.5
         else
-            data[k-1] = 0.5
+            data[k-1] = 0.5 # I'm not sure if these values are correct
             data[k] = 0.5
         end
     else
         error
     end
 
-    return BodyUnitVector{typeof(data),typeof(k)}(data,k,closuretype)
+    return BodyUnitVector{typeof(data)}(data,k,closuretype)
 end
