@@ -1,14 +1,10 @@
-struct BodyUnitVector{TF}
-    data::TF
-    k::Integer
-    closuretype::Type{<:RigidBodyTools.BodyClosureType}
-end
+const BodyUnitVector = ScalarData
 
 function BodyUnitVector(Nk::Integer,k::Integer,closuretype::Type{<:RigidBodyTools.BodyClosureType})
 
     @assert 1 <= k <= Nk "k has to be in the range 1:Nk"
 
-    data = ScalarData(Nk)
+    data = zeros(Nk)
 
     # ONLY VALID IF POINTS ARE MIDPOINTS
     if closuretype == RigidBodyTools.OpenBody
@@ -26,5 +22,5 @@ function BodyUnitVector(Nk::Integer,k::Integer,closuretype::Type{<:RigidBodyTool
         error
     end
 
-    return BodyUnitVector{typeof(data)}(data,k,closuretype)
+    return BodyUnitVector(data)
 end
