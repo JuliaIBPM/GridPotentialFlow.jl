@@ -1,10 +1,12 @@
+import SparseArrays: spzeros
+
 const BodyUnitVector = ScalarData
 
 function BodyUnitVector(Nk::Integer,k::Integer,closuretype::Type{<:RigidBodyTools.BodyClosureType})
 
     @assert 1 <= k <= Nk "k has to be in the range 1:Nk"
 
-    data = zeros(Nk)
+    data = spzeros(Nk)
 
     # ONLY VALID IF POINTS ARE MIDPOINTS
     if closuretype == RigidBodyTools.OpenBody
