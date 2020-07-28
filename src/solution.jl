@@ -1,6 +1,6 @@
-struct PotentialFlowSolution{TU,TF,T}
+struct PotentialFlowSolution{T,TU,TF,TB}
     ψ::TU
-    f::TF
-    ψ₀::T
-    δΓvec::Vector{T}
+    f̃::TF
+    ψ₀::TB
+    δΓ_kvec::Vector{T}
 end
