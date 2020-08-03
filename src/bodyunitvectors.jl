@@ -4,16 +4,17 @@ const BodyUnitVector = ScalarData
 
 function BodyUnitVector(Nk::Integer,k::Integer,closuretype::Type{<:RigidBodyTools.BodyClosureType})
 
-    @assert 1 <= k <= Nk "k has to be in the range 1:Nk"
+    @assert 1 <= k <= Nk+1 "k has to be in the range 1:Nk"
 
     data = spzeros(Nk)
 
     # ONLY VALID IF POINTS ARE MIDPOINTS
+    # Change to something based on a coordinate?
     if closuretype == RigidBodyTools.OpenBody
         if k == 1
             data[1] = 1.5
             data[2] = -0.5
-        elseif k == Nk
+        elseif k == Nk+1
             data[Nk-1] = -0.5
             data[Nk] = 1.5
         else
