@@ -134,7 +134,7 @@ end
     regularizedrhs = PotentialFlowRHS(w,ψb,nothing,[0.0,0.0],[0.0,0.0])
     GridPotentialFlow.ldiv!(regularizedsol,regularizedsys,regularizedrhs)
 
-    include("flateplatevalidation.jl")
+    include("flatplatevalidation.jl")
 
     @test isapprox(regularizedsol.δΓ_kvec[2]/Δx^2, blobs[1].S; rtol = 1e-1) # edge indices are reversed
 

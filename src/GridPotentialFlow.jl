@@ -10,11 +10,11 @@ using RecursiveArrayTools
 
 export BodyUnitVector, PotentialFlowSolution, PotentialFlowRHS, UnregularizedPotentialFlowSystem, RegularizedPotentialFlowSystem, Vortex, PotentialFlowSystem
 
+include("vortex.jl")
 include("bodyunitvectors.jl")
-include("righthandside.jl")
-include("solution.jl")
-include("vortices.jl")
-include("systems.jl")
+include("solver/righthandside.jl")
+include("solver/solution.jl")
+include("solver/systems.jl")
 
 
 end
