@@ -1,14 +1,14 @@
 """
-    Vortex{T}
+    Vortex
 
-Vortex type, with x-position `x`, y-position `y`, and strength `Γ`, all of type `T`.
+Vortex type, with x-position `x`, y-position `y`, and strength `Γ`.
 """
-mutable struct Vortex{T}
+mutable struct Vortex
     # Position
-    x::T
-    y::T
+    x::Float64
+    y::Float64
     # Strength
-    Γ::T
+    Γ::Float64
 end
 
 """
