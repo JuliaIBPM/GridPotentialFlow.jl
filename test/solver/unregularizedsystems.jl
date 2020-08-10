@@ -57,8 +57,7 @@ for nx in nx_hist
     regop = Regularize(X,Δx,I0=origin(g),issymmetric=true,weights=Δs,ddftype=Fields.Yang3)
     Rmat,_ = RegularizationMatrix(regop,f,w);
     Emat = InterpolationMatrix(regop,w,f);
-    PS = SaddleSystem((ψ,f),(L⁻¹,Rmat,Emat),issymmetric=false,store=true,isposdef=true)
-    S = Matrix(PS.S);
+    S = SaddleSystem((ψ,f),(L⁻¹,Rmat,Emat),issymmetric=true)
 
     unregularizedsys = PotentialFlowSystem(S)
     unregularizedsol = PotentialFlowSolution(ψ,f,[0.0],[0.0])

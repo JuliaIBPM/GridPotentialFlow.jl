@@ -27,7 +27,8 @@ xc = 0.0; yc = 0.0
 T = RigidTransform((xc,yc),-α)
 T(body)
 
-X = VectorData(midpoints(body)[1][1:end],midpoints(body)[2][1:end])
+# X = VectorData(midpoints(body.x)[1:end],midpoints(body.y)[1:end])
+X = VectorData(body.x,body.y)
 N = length(X.u)
 f = ScalarData(X);
 f̃ = ScalarData(X);
@@ -39,8 +40,10 @@ regop = Regularize(X,Δx,I0=origin(g),issymmetric=true)
 Rmat,Emat = RegularizationMatrix(regop,f,w);
 S = SaddleSystem(L,Emat,Rmat,SaddleVector(w,ψb))
 
+# e1 = BodyUnitVector(N,1,RigidBodyTools.OpenBody);
+# e2 = BodyUnitVector(N,N+1,RigidBodyTools.OpenBody);
 e1 = BodyUnitVector(N,1,RigidBodyTools.OpenBody);
-e2 = BodyUnitVector(N,N+1,RigidBodyTools.OpenBody);
+e2 = BodyUnitVector(N,N,RigidBodyTools.OpenBody);
 
 ψb .= 1
 w₀ = zero(w)

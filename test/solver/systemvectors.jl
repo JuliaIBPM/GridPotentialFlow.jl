@@ -33,24 +33,34 @@ f₀ = ScalarData(X);
 ψ₀ = [0.0];
 
 @testset "BodyUnitVector" begin
-    e_1 = BodyUnitVector(N,1,RigidBodyTools.OpenBody);
-    e_mid = BodyUnitVector(N,Int(ceil((N+1)/2)),RigidBodyTools.OpenBody);
-    e_end = BodyUnitVector(N,N+1,RigidBodyTools.OpenBody);
-    @test_throws AssertionError BodyUnitVector(N,N+2,RigidBodyTools.OpenBody);
-    @test_throws AssertionError BodyUnitVector(N,0,RigidBodyTools.OpenBody);
-
     constantvector = ScalarData(N)
     constantvector .= 1.0
     step = 1.0
     linearlyincreasingvector = ScalarData(N)
     linearlyincreasingvector .= 1.0:step:N
 
+    # Regular points
+    e_1 = BodyUnitVector(N,1,RigidBodyTools.OpenBody,midpoints=false);
+    e_end = BodyUnitVector(N,N,RigidBodyTools.OpenBody,midpoints=false);
+    @test_throws AssertionError BodyUnitVector(N,N+1,RigidBodyTools.OpenBody,midpoints=false);
+    @test_throws AssertionError BodyUnitVector(N,0,RigidBodyTools.OpenBody,midpoints=false);
+
     @test e_1'*constantvector == 1.0
-    @test e_mid'*constantvector == 1.0
+    @test e_end'*constantvector == 1.0
+
+    @test e_1'*linearlyincreasingvector == linearlyincreasingvector[1]
+    @test e_end'*linearlyincreasingvector == linearlyincreasingvector[end]
+
+    # Midpoints
+    e_1 = BodyUnitVector(N,1,RigidBodyTools.OpenBody,midpoints=true);
+    e_end = BodyUnitVector(N,N+1,RigidBodyTools.OpenBody,midpoints=true);
+    @test_throws AssertionError BodyUnitVector(N,N+2,RigidBodyTools.OpenBody,midpoints=true);
+    @test_throws AssertionError BodyUnitVector(N,0,RigidBodyTools.OpenBody,midpoints=true);
+
+    @test e_1'*constantvector == 1.0
     @test e_end'*constantvector == 1.0
 
     @test e_1'*linearlyincreasingvector == linearlyincreasingvector[1]-step/2
-    @test e_mid'*linearlyincreasingvector == mean(linearlyincreasingvector)
     @test e_end'*linearlyincreasingvector == linearlyincreasingvector[end]+step/2
 end
 @testset "PotentialFlowRHS" begin
