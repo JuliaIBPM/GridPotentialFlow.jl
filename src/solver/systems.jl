@@ -2,15 +2,16 @@ import LinearAlgebra: I, \, ldiv!
 import SparseArrays: AbstractSparseMatrix, SparseMatrixCSC, sparse
 import Statistics: mean
 
+abstract type PotentialFlowSystem end
 abstract type FlowType end
 abstract type Steady <: FlowType end
 abstract type Unsteady <: FlowType end
 
-struct UnregularizedPotentialFlowSystem
+struct UnregularizedPotentialFlowSystem <: PotentialFlowSystem
     S::SaddleSystem
 end
 
-struct RegularizedPotentialFlowSystem{FlowType,Nb,Nk,T,TU,TF,TE}
+struct RegularizedPotentialFlowSystem{FlowType,Nb,Nk,T,TU,TF,TE} <: PotentialFlowSystem
     S̃::SaddleSystem
     f₀::TF
     e_kvec::Vector{TE}
@@ -21,7 +22,7 @@ struct RegularizedPotentialFlowSystem{FlowType,Nb,Nk,T,TU,TF,TE}
     ones::TF
     _w_buf::Union{Nothing,TU}
 
-    function RegularizedPotentialFlowSystem(flowtype::Type{<:FlowType},S̃::SaddleSystem{T,Ns,Nc,TU,TF}, f₀::TF, e_kvec::Vector{TE}, d_kvec::Union{Nothing,Vector{TU}}=nothing, f̃_kvec::Union{Nothing,Vector{TF}}=nothing) where {T,Ns,Nc,TU,TF,TE}
+    function RegularizedPotentialFlowSystem(flowtype::Type{<:FlowType}, S̃::SaddleSystem{T,Ns,Nc,TU,TF}, f₀::TF, e_kvec::Vector{TE}, d_kvec::Union{Nothing,Vector{TU}}=nothing, f̃_kvec::Union{Nothing,Vector{TF}}=nothing) where {T,Ns,Nc,TU,TF,TE}
         if flowtype == Unsteady
             if isnothing(d_kvec) error("d_kvec is not defined") end
             if isnothing(f̃_kvec) error("f̃_kvec is not defined") end
@@ -90,7 +91,7 @@ function ldiv!(sol::PotentialFlowSolution{T,TU,TF}, sys::RegularizedPotentialFlo
     return sol
 end
 
-function ldiv!(sol::PotentialFlowSolution{T,TU,TF}, sys::RegularizedPotentialFlowSystem{Unsteady,Nb,Nk,T,TU,TF,TE}, rhs::PotentialFlowRHS{T,TU,TF}) where {FlowType,Nb,Nk,T,TU,TF,TE}
+function ldiv!(sol::PotentialFlowSolution{T,TU,TF}, sys::RegularizedPotentialFlowSystem{Unsteady,Nb,Nk,T,TU,TF,TE}, rhs::PotentialFlowRHS{T,TU,TF}) where {Nb,Nk,T,TU,TF,TE}
 
     @unpack S̃, f₀, e_kvec, d_kvec, f̃_kvec, P_kvec, zeros, ones, _w_buf = sys
     @unpack ψ, f̃, ψ₀, δΓ_kvec = sol
@@ -193,4 +194,10 @@ function _computepointvortexstrengths(Nk, k_sheddingedges::Vector{Integer}, P_kv
     δΓ_kvec = -δΓsys\δΓrhs
 
     return δΓ_kvec
+end
+
+function setd_kvec!(sys::RegularizedPotentialFlowSystem{Unsteady,Nb,Nk,T,TU,TF,TE}, d_kvec::Vector{TU}) where {Nb,Nk,T,TU,TF,TE}
+
+    sys.d_kvec = d_kvec
+
 end
