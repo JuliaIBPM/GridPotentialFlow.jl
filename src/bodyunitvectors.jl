@@ -34,3 +34,7 @@ function BodyUnitVector(Nk::Integer,k::Integer,closuretype::Type{<:RigidBodyTool
 
     return BodyUnitVector(data)
 end
+
+function BodyUnitVector(body::Body{N,C},k::Integer;midpoints::Bool=false) where {N,C}
+    return BodyUnitVector(length(body),k,C,midpoints=midpoints)
+end
