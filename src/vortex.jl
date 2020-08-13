@@ -21,3 +21,9 @@ function updateposition!(vortex::Vortex,u::Real,v::Real,Δt::Real)
     vortex.y += Δt*v
     return vortex
 end
+
+function setposition!(vortex::Vortex,x::Real,y::Real)
+    vortex.x = x
+    vortex.y = y
+    return vortex
+end
