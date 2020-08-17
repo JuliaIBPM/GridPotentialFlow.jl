@@ -62,35 +62,35 @@ S̃ = SaddleSystem(L,Emat,R̃mat,SaddleVector(w,ψb))
     f̃step[Int(ceil(N/2))+1:end] .= 1.0
     Nk = 2
 
-    k_sheddingedges, activef̃limits_kvec = GridPotentialFlow._findsheddingedges(Nk, [e1,e2], f̃ones, [0.0,0.0], [0.0,0.0])
+    k_sheddingedges, activef̃limits_kvec = GridPotentialFlow._findsheddingedges(Nk, [e1,e2], f̃ones, SuctionParameter.([0.0,0.0]))
     @test k_sheddingedges == [1,2]
     @test activef̃limits_kvec == [0.0,0.0]
 
-    k_sheddingedges, activef̃limits_kvec = GridPotentialFlow._findsheddingedges(Nk, [e1,e2], f̃ones, [-0.5,-0.5], [0.5,0.5])
+    k_sheddingedges, activef̃limits_kvec = GridPotentialFlow._findsheddingedges(Nk, [e1,e2], f̃ones, SuctionParameterRange.([-0.5,-0.5],[0.5,0.5]))
     @test k_sheddingedges == [1,2]
     @test activef̃limits_kvec == [0.5,0.5]
 
-    k_sheddingedges, activef̃limits_kvec = GridPotentialFlow._findsheddingedges(Nk, [e1,e2], -1*f̃ones, [-0.5,-0.5], [0.5,0.5])
+    k_sheddingedges, activef̃limits_kvec = GridPotentialFlow._findsheddingedges(Nk, [e1,e2], -1*f̃ones, SuctionParameterRange.([-0.5,-0.5],[0.5,0.5]))
     @test k_sheddingedges == [1,2]
     @test activef̃limits_kvec == [-0.5,-0.5]
 
-    k_sheddingedges, activef̃limits_kvec = GridPotentialFlow._findsheddingedges(Nk, [e1,e2], f̃ones, [-2.0,-2.0], [2.0,2.0])
+    k_sheddingedges, activef̃limits_kvec = GridPotentialFlow._findsheddingedges(Nk, [e1,e2], f̃ones, SuctionParameterRange.([-2.0,-2.0],[2.0,2.0]))
     @test isempty(k_sheddingedges)
-    @test activef̃limits_kvec == [nothing,nothing]
+    @test activef̃limits_kvec == [Inf,Inf]
 
-    k_sheddingedges, activef̃limits_kvec = GridPotentialFlow._findsheddingedges(Nk, [e1,e2], f̃ones, [0.0,-2.0], [0.0,2.0])
+    k_sheddingedges, activef̃limits_kvec = GridPotentialFlow._findsheddingedges(Nk, [e1,e2], f̃ones, SuctionParameterRange.([0.0,-2.0],[0.0,2.0]))
     @test k_sheddingedges == [1]
-    @test activef̃limits_kvec == [0.0,nothing]
+    @test activef̃limits_kvec == [0.0,Inf]
 
-    k_sheddingedges, activef̃limits_kvec = GridPotentialFlow._findsheddingedges(Nk, [e1,e2], f̃ones, [-2.0,0.0], [2.0,0.0])
+    k_sheddingedges, activef̃limits_kvec = GridPotentialFlow._findsheddingedges(Nk, [e1,e2], f̃ones, SuctionParameterRange.([-2.0,0.0],[2.0,0.0]))
     @test k_sheddingedges == [2]
-    @test activef̃limits_kvec == [nothing,0.0]
+    @test activef̃limits_kvec == [Inf,0.0]
 
-    k_sheddingedges, activef̃limits_kvec = GridPotentialFlow._findsheddingedges(Nk, [e1,e2], f̃step, [0.0,0.0], [0.0,0.0])
+    k_sheddingedges, activef̃limits_kvec = GridPotentialFlow._findsheddingedges(Nk, [e1,e2], f̃step, SuctionParameter.([0.0,0.0]))
     @test k_sheddingedges == [1,2]
     @test activef̃limits_kvec == [0.0,0.0]
 
-    k_sheddingedges, activef̃limits_kvec = GridPotentialFlow._findsheddingedges(Nk, [e1,e2], f̃step, [-0.5,-0.5], [0.5,0.5])
+    k_sheddingedges, activef̃limits_kvec = GridPotentialFlow._findsheddingedges(Nk, [e1,e2], f̃step, SuctionParameterRange.([-0.5,-0.5],[0.5,0.5]))
     @test k_sheddingedges == [1,2]
     @test activef̃limits_kvec == [-0.5,0.5]
 
@@ -105,9 +105,9 @@ end
 
 @testset "Steady (Kutta-Joukowski lift)" begin
     regularizedsys = PotentialFlowSystem(S̃,f₀,[e2]);
-    regularizedsol = PotentialFlowSolution(ψ,f,[0.0],nothing)
+    regularizedsol = PotentialFlowSolution(ψ,f,[0.0])
     ψb .= -U∞*(X.v .- body.cent[2]);
-    regularizedrhs = PotentialFlowRHS(w,ψb,[0.0],nothing,nothing)
+    regularizedrhs = PotentialFlowRHS(w,ψb,[0.0])
     GridPotentialFlow.ldiv!(regularizedsol,regularizedsys,regularizedrhs)
 
     Γnumerical = sum(f₀.*regularizedsol.f̃)
@@ -134,7 +134,7 @@ end
     regularizedsys = PotentialFlowSystem(S̃,f₀,[e1,e2],[d1,d2]);
     regularizedsol = PotentialFlowSolution(ψ,f,[0.0],[0.0,0.0])
     ψb .= -U∞*(X.v .- body.cent[2]);
-    regularizedrhs = PotentialFlowRHS(w,ψb,nothing,[0.0,0.0],[0.0,0.0])
+    regularizedrhs = PotentialFlowRHS(w,ψb,([0.0,0.0],[0.0,0.0]))
     GridPotentialFlow.ldiv!(regularizedsol,regularizedsys,regularizedrhs)
 
     include("flatplatevalidation.jl")

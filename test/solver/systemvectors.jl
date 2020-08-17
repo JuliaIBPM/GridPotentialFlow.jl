@@ -64,22 +64,22 @@ f₀ = ScalarData(X);
     @test e_end'*linearlyincreasingvector == linearlyincreasingvector[end]+step/2
 end
 @testset "PotentialFlowRHS" begin
-    f̃limit_kvec = rand(1)
-    steadyrhs = PotentialFlowRHS(w,ψb,f̃limit_kvec,nothing,nothing)
-    @test steadyrhs.w == w
-    @test steadyrhs.ψb == ψb
-    @test steadyrhs.f̃limit_kvec == f̃limit_kvec
-    @test steadyrhs.f̃min_kvec == nothing
-    @test steadyrhs.f̃max_kvec == nothing
-    unsteadyrhs = PotentialFlowRHS(w,ψb,nothing,[0.0],[0.0])
-    @test unsteadyrhs.w == w
-    @test unsteadyrhs.ψb == ψb
-    @test unsteadyrhs.f̃limit_kvec == nothing
-    @test unsteadyrhs.f̃min_kvec == [0.0]
-    @test unsteadyrhs.f̃max_kvec == [0.0]
     rhs = PotentialFlowRHS(w,ψb)
     @test rhs.w == w
     @test rhs.ψb == ψb
+
+    f̃lim_kvec = [SuctionParameter(randn(Float64))]
+    rhs = PotentialFlowRHS(w,ψb,f̃lim_kvec)
+    @test rhs.w == w
+    @test rhs.ψb == ψb
+    @test rhs.f̃lim_kvec == f̃lim_kvec
+
+    f̃lim_kvec = [SuctionParameterRange(randn(Float64),randn(Float64))]
+    @test f̃lim_kvec[1].min ≤ f̃lim_kvec[1].max
+    rhs = PotentialFlowRHS(w,ψb,f̃lim_kvec)
+    @test rhs.w == w
+    @test rhs.ψb == ψb
+    @test rhs.f̃lim_kvec == f̃lim_kvec
 end
 @testset "PotentialFlowSolution" begin
     ψ₀ = rand(1)
@@ -89,7 +89,11 @@ end
     @test sol.f̃ == f̃
     @test sol.ψ₀ == ψ₀
     @test sol.δΓ_kvec == δΓ_kvec
-    sol = PotentialFlowSolution(ψ,f̃)
+    sol = PotentialFlowSolution(ψ,f̃,ψ₀)
     @test sol.ψ == ψ
     @test sol.f̃ == f̃
+    @test sol.ψ₀ == ψ₀
+    sol = PotentialFlowSolution(ψ,f̃)
+    @test sol.ψ == ψ
+    @test sol.f == f̃
 end
