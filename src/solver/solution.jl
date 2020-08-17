@@ -1,10 +1,19 @@
-struct PotentialFlowSolution{T,TU,TF}
+abstract type FlowType end
+
+struct UnregularizedPotentialFlowSolution{TU,TF}
     ψ::TU
-    f̃::TF
-    ψ₀::Union{Nothing,Vector{T}}
-    δΓ_kvec::Union{Nothing,Vector{T}}
+    f::TF
 end
 
-function PotentialFlowSolution(ψ::AbstractMatrix,f̃::AbstractVector)
-    return PotentialFlowSolution{eltype(ψ),typeof(ψ),typeof(f̃)}(ψ,f̃,nothing,nothing)
+struct SteadyRegularizedPotentialFlowSolution{T,TU,TF}
+    ψ::TU
+    f̃::TF
+    ψ₀::Vector{T}
+end
+
+struct UnsteadyRegularizedPotentialFlowSolution{T,TU,TF}
+    ψ::TU
+    f̃::TF
+    ψ₀::Vector{T}
+    δΓ_kvec::Union{Nothing,Vector{T}}
 end
