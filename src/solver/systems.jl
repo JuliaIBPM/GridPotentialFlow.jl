@@ -92,12 +92,17 @@ function ldiv!(sol::UnsteadyRegularizedPotentialFlowSolution{T,TU,TF}, sys::Regu
     @assert length(f̃lim_kvec) == Nk
     @assert length(δΓ_kvec) == Nk
 
+    f̃ .= constraint(S̃\SaddleVector(-w,ψb))
+
+    activef̃lim_kvec = Vector{SuctionParameter}()
     for k in 1:Nk
         f̃_kvec[k] = constraint(S̃\SaddleVector(-d_kvec[k],zeros)) # Maybe move this to system constructor?
+        activef̃lim = _findactivef̃limit(e_kvec[k],f̃,f̃lim_kvec[k])
+        push!(activef̃lim_kvec,activef̃lim)
     end
 
-    f̃ .= constraint(S̃\SaddleVector(-w,ψb))
-    k_sheddingedges, activef̃lim_kvec = _findsheddingedges(Nk, e_kvec, f̃, f̃lim_kvec)
+    # The shedding edges are the ones for which the active f̃ limit is not Inf
+    k_sheddingedges = [k for k in 1:Nk if activef̃lim_kvec[k] != Inf]
 
     # TODO: add loop below to correct vortex strengths (after adding constraint function to ConstrainedSystems)
     # while true
@@ -109,8 +114,9 @@ function ldiv!(sol::UnsteadyRegularizedPotentialFlowSolution{T,TU,TF}, sys::Regu
     #     δΓ_kvec .= _computepointvortexstrengths(Nk, k_sheddingedges::Vector{Integer}, P_kvec, f̃_kvec, f̃lim_kvec, f₀, w)
     # end
 
-    δΓ_kvec .= _computepointvortexstrengths(Nk, k_sheddingedges::Vector{Integer}, P_kvec, f̃_kvec, activef̃lim_kvec, f̃, f₀, w)
+    δΓ_kvec .= _computepointvortexstrengths(Nk, k_sheddingedges, P_kvec, f̃_kvec, activef̃lim_kvec, f̃, f₀, w)
 
+    # Add the vorticity of the shedded vortices to the vorticity field and use this to compute the steady regularized solution
     _w_buf .= w .+ sum(δΓ_kvec.*d_kvec)
 
     steadyrhs = PotentialFlowRHS(_w_buf, ψb, activef̃lim_kvec)
@@ -142,36 +148,58 @@ function _computesparsekuttaoperator(e::AbstractVector)::SparseMatrixCSC
     return sparse(I - ones(length(e))*e')
 end
 
-function _findsheddingedges(Nk, e_kvec, f̃, f̃lim_kvec::Vector{SuctionParameter})
+function _findactivef̃limit(e::BodyUnitVector, f̃::TF, f̃lim::SuctionParameter) where {TF}
 
-    f̃lim_kvec_range = SuctionParameterRange.(-f̃lim_kvec,f̃lim_kvec)
+    f̃lim_range = SuctionParameterRange(-f̃lim,f̃lim)
 
-    return _findsheddingedges(Nk, e_kvec, f̃, f̃lim_kvec_range)
+    return _findactivef̃limit(e,f̃,f̃lim_range)
 
 end
 
-function _findsheddingedges(Nk, e_kvec, f̃, f̃lim_kvec::Vector{SuctionParameterRange})
+function _findactivef̃limit(e::BodyUnitVector, f̃::TF, f̃lim::SuctionParameterRange) where {TF}
 
-    k_sheddingedges = Vector{Integer}()
-    activef̃lim_kvec = Vector{SuctionParameter}()
-
-    for k in 1:Nk
-        if e_kvec[k]'*f̃ < f̃lim_kvec[k].min
-            push!(activef̃lim_kvec,f̃lim_kvec[k].min)
-            push!(k_sheddingedges,k)
-        elseif e_kvec[k]'*f̃ > f̃lim_kvec[k].max
-            push!(activef̃lim_kvec,f̃lim_kvec[k].max)
-            push!(k_sheddingedges,k)
-        else
-            push!(activef̃lim_kvec,Inf)
-        end
+    if e'*f̃ < f̃lim.min
+        activef̃lim = f̃lim.min
+    elseif e'*f̃ > f̃lim.max
+        activef̃lim = f̃lim.max
+    else
+        activef̃lim = Inf
     end
 
-    return k_sheddingedges, activef̃lim_kvec
+    return activef̃lim
 
 end
 
-function _computepointvortexstrengths(Nk, k_sheddingedges::Vector{Integer}, P_kvec, f̃_kvec, f̃lim_kvec, f̃, f₀, w)
+# function _findsheddingedges(Nk, e_kvec, f̃, f̃lim_kvec::Vector{SuctionParameter})
+#
+#     f̃lim_kvec_range = SuctionParameterRange.(-f̃lim_kvec,f̃lim_kvec)
+#
+#     return _findsheddingedges(Nk, e_kvec, f̃, f̃lim_kvec_range)
+#
+# end
+#
+# function _findsheddingedges(Nk, e_kvec, f̃, f̃lim_kvec::Vector{SuctionParameterRange})
+#
+#     k_sheddingedges = Vector{Integer}()
+#     activef̃lim_kvec = Vector{SuctionParameter}()
+#
+#     for k in 1:Nk
+#         if e_kvec[k]'*f̃ < f̃lim_kvec[k].min
+#             push!(activef̃lim_kvec,f̃lim_kvec[k].min)
+#             push!(k_sheddingedges,k)
+#         elseif e_kvec[k]'*f̃ > f̃lim_kvec[k].max
+#             push!(activef̃lim_kvec,f̃lim_kvec[k].max)
+#             push!(k_sheddingedges,k)
+#         else
+#             push!(activef̃lim_kvec,Inf)
+#         end
+#     end
+#
+#     return k_sheddingedges, activef̃lim_kvec
+#
+# end
+
+function _computepointvortexstrengths(Nk, k_sheddingedges::Vector{<:Integer}, P_kvec, f̃_kvec, f̃lim_kvec, f̃, f₀, w)
 
     δΓsys = zeros(eltype(w),Nk,Nk)
     δΓrhs = zeros(eltype(w),Nk)

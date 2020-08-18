@@ -62,37 +62,45 @@ S̃ = SaddleSystem(L,Emat,R̃mat,SaddleVector(w,ψb))
     f̃step[Int(ceil(N/2))+1:end] .= 1.0
     Nk = 2
 
-    k_sheddingedges, activef̃limits_kvec = GridPotentialFlow._findsheddingedges(Nk, [e1,e2], f̃ones, SuctionParameter.([0.0,0.0]))
-    @test k_sheddingedges == [1,2]
-    @test activef̃limits_kvec == [0.0,0.0]
+    activef̃limits_1 = GridPotentialFlow._findactivef̃limit(e1, f̃ones, SuctionParameter(0.0))
+    activef̃limits_2 = GridPotentialFlow._findactivef̃limit(e2, f̃ones, SuctionParameter(0.0))
+    @test activef̃limits_1 == 0.0
+    @test activef̃limits_2 == 0.0
 
-    k_sheddingedges, activef̃limits_kvec = GridPotentialFlow._findsheddingedges(Nk, [e1,e2], f̃ones, SuctionParameterRange.([-0.5,-0.5],[0.5,0.5]))
-    @test k_sheddingedges == [1,2]
-    @test activef̃limits_kvec == [0.5,0.5]
+    activef̃limits_1 = GridPotentialFlow._findactivef̃limit(e1, f̃ones, SuctionParameterRange(-0.5,0.5))
+    activef̃limits_2 = GridPotentialFlow._findactivef̃limit(e2, f̃ones, SuctionParameterRange(-0.5,0.5))
+    @test activef̃limits_1 == 0.5
+    @test activef̃limits_2 == 0.5
 
-    k_sheddingedges, activef̃limits_kvec = GridPotentialFlow._findsheddingedges(Nk, [e1,e2], -1*f̃ones, SuctionParameterRange.([-0.5,-0.5],[0.5,0.5]))
-    @test k_sheddingedges == [1,2]
-    @test activef̃limits_kvec == [-0.5,-0.5]
+    activef̃limits_1 = GridPotentialFlow._findactivef̃limit(e1, -1*f̃ones, SuctionParameterRange(-0.5,0.5))
+    activef̃limits_2 = GridPotentialFlow._findactivef̃limit(e2, -1*f̃ones, SuctionParameterRange(-0.5,0.5))
+    @test activef̃limits_1 == -0.5
+    @test activef̃limits_2 == -0.5
 
-    k_sheddingedges, activef̃limits_kvec = GridPotentialFlow._findsheddingedges(Nk, [e1,e2], f̃ones, SuctionParameterRange.([-2.0,-2.0],[2.0,2.0]))
-    @test isempty(k_sheddingedges)
-    @test activef̃limits_kvec == [Inf,Inf]
+    activef̃limits_1 = GridPotentialFlow._findactivef̃limit(e1, f̃ones, SuctionParameterRange(-2.0,2.0))
+    activef̃limits_2 = GridPotentialFlow._findactivef̃limit(e2, f̃ones, SuctionParameterRange(-2.0,2.0))
+    @test activef̃limits_1 == Inf
+    @test activef̃limits_2 == Inf
 
-    k_sheddingedges, activef̃limits_kvec = GridPotentialFlow._findsheddingedges(Nk, [e1,e2], f̃ones, SuctionParameterRange.([0.0,-2.0],[0.0,2.0]))
-    @test k_sheddingedges == [1]
-    @test activef̃limits_kvec == [0.0,Inf]
+    activef̃limits_1 = GridPotentialFlow._findactivef̃limit(e1, f̃ones, SuctionParameterRange(0.0,0.0))
+    activef̃limits_2 = GridPotentialFlow._findactivef̃limit(e2, f̃ones, SuctionParameterRange(-2.0,2.0))
+    @test activef̃limits_1 == 0.0
+    @test activef̃limits_2 == Inf
 
-    k_sheddingedges, activef̃limits_kvec = GridPotentialFlow._findsheddingedges(Nk, [e1,e2], f̃ones, SuctionParameterRange.([-2.0,0.0],[2.0,0.0]))
-    @test k_sheddingedges == [2]
-    @test activef̃limits_kvec == [Inf,0.0]
+    activef̃limits_1 = GridPotentialFlow._findactivef̃limit(e1, f̃ones, SuctionParameterRange(-2.0,2.0))
+    activef̃limits_2 = GridPotentialFlow._findactivef̃limit(e2, f̃ones, SuctionParameterRange(0.0,0.0))
+    @test activef̃limits_1 == Inf
+    @test activef̃limits_2 == 0.0
 
-    k_sheddingedges, activef̃limits_kvec = GridPotentialFlow._findsheddingedges(Nk, [e1,e2], f̃step, SuctionParameter.([0.0,0.0]))
-    @test k_sheddingedges == [1,2]
-    @test activef̃limits_kvec == [0.0,0.0]
+    activef̃limits_1 = GridPotentialFlow._findactivef̃limit(e1, f̃step, SuctionParameterRange(0.0,0.0))
+    activef̃limits_2 = GridPotentialFlow._findactivef̃limit(e2, f̃step, SuctionParameterRange(0.0,0.0))
+    @test activef̃limits_1 == 0.0
+    @test activef̃limits_2 == 0.0
 
-    k_sheddingedges, activef̃limits_kvec = GridPotentialFlow._findsheddingedges(Nk, [e1,e2], f̃step, SuctionParameterRange.([-0.5,-0.5],[0.5,0.5]))
-    @test k_sheddingedges == [1,2]
-    @test activef̃limits_kvec == [-0.5,0.5]
+    activef̃limits_1 = GridPotentialFlow._findactivef̃limit(e1, f̃step, SuctionParameterRange(-0.5,0.5))
+    activef̃limits_2 = GridPotentialFlow._findactivef̃limit(e2, f̃step, SuctionParameterRange(-0.5,0.5))
+    @test activef̃limits_1 == -0.5
+    @test activef̃limits_2 == 0.5
 
     #################################
 
