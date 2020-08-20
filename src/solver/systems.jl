@@ -1,11 +1,12 @@
 import LinearAlgebra: I, \, ldiv!
 import SparseArrays: AbstractSparseMatrix, SparseMatrixCSC, sparse
 import Statistics: mean
+import CartesianGrids: Laplacian
 
 abstract type PotentialFlowSystem end
 
-struct UnregularizedPotentialFlowSystem <: PotentialFlowSystem
-    S::SaddleSystem
+struct UnregularizedPotentialFlowSystem{Nb} <: PotentialFlowSystem
+    S::Union{SaddleSystem,Laplacian}
 end
 
 struct RegularizedPotentialFlowSystem{Nb,Nk,T,TU,TF,TE} <: PotentialFlowSystem
@@ -36,8 +37,14 @@ struct RegularizedPotentialFlowSystem{Nb,Nk,T,TU,TF,TE} <: PotentialFlowSystem
 
 end
 
+# Without bodies
+function PotentialFlowSystem(L::Laplacian)
+    return UnregularizedPotentialFlowSystem{0}(L)
+end
+
+# With bodies
 function PotentialFlowSystem(S::SaddleSystem{T,Ns,Nc,TU,TF}) where {T,Ns,Nc,TU,TF}
-    return UnregularizedPotentialFlowSystem(S)
+    return UnregularizedPotentialFlowSystem{1}(S) # Only works for 1 body for now
 end
 
 function PotentialFlowSystem(S̃::SaddleSystem{T,Ns,Nc,TU,TF}, f₀::TF, e_kvec::Vector{TE}) where {T,Ns,Nc,TU,TF,TE}
@@ -49,7 +56,19 @@ function PotentialFlowSystem(S̃::SaddleSystem{T,Ns,Nc,TU,TF}, f₀::TF, e_kvec:
     return RegularizedPotentialFlowSystem(S̃,f₀,e_kvec,d_kvec,f̃_kvec)
 end
 
-function ldiv!(sol::UnregularizedPotentialFlowSolution{TU,TF}, sys::UnregularizedPotentialFlowSystem, rhs::UnregularizedPotentialFlowRHS{TU,TF}) where {T,TU,TF,TE}
+# No bodies
+function ldiv!(sol::UnregularizedPotentialFlowSolution, sys::UnregularizedPotentialFlowSystem{0}, rhs::UnregularizedPotentialFlowRHS{TU,TF}) where {T,TU,TF,TE}
+
+    @unpack S = sys
+    @unpack ψ = sol
+    @unpack w = rhs
+
+    ψ .= S\(-w)
+
+    return sol
+end
+
+function ldiv!(sol::UnregularizedPotentialFlowSolution, sys::UnregularizedPotentialFlowSystem{Nb}, rhs::UnregularizedPotentialFlowRHS{TU,TF}) where {Nb,T,TU,TF,TE}
 
     @unpack S = sys
     @unpack ψ, f = sol
@@ -62,7 +81,7 @@ function ldiv!(sol::UnregularizedPotentialFlowSolution{TU,TF}, sys::Unregularize
     return sol
 end
 
-function ldiv!(sol::SteadyRegularizedPotentialFlowSolution{T,TU,TF}, sys::RegularizedPotentialFlowSystem{Nb,Nk,T,TU,TF,TE}, rhs::RegularizedPotentialFlowRHS{TU,TF,SuctionParameter}) where {Nb,Nk,T,TU,TF,TE,TSP}
+function ldiv!(sol::SteadyRegularizedPotentialFlowSolution{T,TU,TF}, sys::RegularizedPotentialFlowSystem{Nb,Nk,T,TU,TF,TE}, rhs::RegularizedPotentialFlowRHS{TU,TF,TSP}) where {Nb,Nk,T,TU,TF,TE,TSP}
 
     @unpack S̃, f₀, e_kvec, P_kvec, zeros, ones = sys
     @unpack ψ, f̃, ψ₀ = sol
@@ -153,7 +172,6 @@ function _findactivef̃limit(e::BodyUnitVector, f̃::TF, f̃lim::SuctionParamete
     f̃lim_range = SuctionParameterRange(-f̃lim,f̃lim)
 
     return _findactivef̃limit(e,f̃,f̃lim_range)
-
 end
 
 function _findactivef̃limit(e::BodyUnitVector, f̃::TF, f̃lim::SuctionParameterRange) where {TF}
@@ -167,7 +185,6 @@ function _findactivef̃limit(e::BodyUnitVector, f̃::TF, f̃lim::SuctionParamete
     end
 
     return activef̃lim
-
 end
 
 # function _findsheddingedges(Nk, e_kvec, f̃, f̃lim_kvec::Vector{SuctionParameter})
