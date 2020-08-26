@@ -130,15 +130,16 @@ function ldiv!(sol::UnsteadyRegularizedPotentialFlowSolution{T,TU,TF}, sys::Regu
     #     if k_sheddingedges
     #         break
     #     end
-    #     δΓ_kvec .= _computepointvortexstrengths(Nk, k_sheddingedges::Vector{Integer}, P_kvec, f̃_kvec, f̃lim_kvec, f₀, w)
+    #     δΓ_kvec .= _computevortexstrengths(Nk, k_sheddingedges::Vector{Integer}, P_kvec, f̃_kvec, f̃lim_kvec, f₀, w)
     # end
 
-    δΓ_kvec .= _computepointvortexstrengths(Nk, k_sheddingedges, P_kvec, f̃_kvec, activef̃lim_kvec, f̃, f₀, w)
+    δΓ_kvec .= _computevortexstrengths(Nk, k_sheddingedges, P_kvec, f̃_kvec, activef̃lim_kvec, f̃, f₀, w)
 
     # Add the vorticity of the shedded vortices to the vorticity field and use this to compute the steady regularized solution
     _w_buf .= w .+ sum(δΓ_kvec.*d_kvec)
 
-    steadyrhs = PotentialFlowRHS(_w_buf, ψb, activef̃lim_kvec)
+    # TODO: fails if there are no shedding edges
+    steadyrhs = PotentialFlowRHS(_w_buf, ψb, activef̃lim_kvec[k_sheddingedges])
     steadysys = RegularizedPotentialFlowSystem(S̃, f₀, e_kvec[k_sheddingedges], TU[], TF[], P_kvec[k_sheddingedges], zeros, ones, _w_buf)
     steadysol = SteadyRegularizedPotentialFlowSolution(ψ,f̃,ψ₀)
     ldiv!(steadysol,steadysys,steadyrhs)
@@ -216,7 +217,7 @@ end
 #
 # end
 
-function _computepointvortexstrengths(Nk, k_sheddingedges::Vector{<:Integer}, P_kvec, f̃_kvec, f̃lim_kvec, f̃, f₀, w)
+function _computevortexstrengths(Nk, k_sheddingedges::Vector{<:Integer}, P_kvec, f̃_kvec, f̃lim_kvec, f̃, f₀, w)
 
     δΓsys = zeros(eltype(w),Nk,Nk)
     δΓrhs = zeros(eltype(w),Nk)
@@ -237,12 +238,18 @@ function _computepointvortexstrengths(Nk, k_sheddingedges::Vector{<:Integer}, P_
 
     δΓ_kvec = -δΓsys\δΓrhs
 
+    println(Γ₀)
+    println(Γw)
+    println(δΓ_kvec)
+
     return δΓ_kvec
 end
 
 function setd_kvec!(sys::RegularizedPotentialFlowSystem{Nb,Nk,T,TU,TF,TE}, d_kvec::Vector{TU}) where {Nb,Nk,T,TU,TF,TE}
 
-    sys.d_kvec = d_kvec
-    sys.f_kvec = fill(TF(), length(d_kvec))
+    resize!(sys.d_kvec,length(d_kvec))
+    resize!(sys.f̃_kvec,length(d_kvec))
+    sys.d_kvec .= d_kvec
+    sys.f̃_kvec .= fill(TF(), length(d_kvec))
 
 end
