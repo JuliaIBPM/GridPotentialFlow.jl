@@ -169,10 +169,11 @@ end
 
 function computeregularizationmatrix(g::PhysicalGrid,X::VectorData{N},f::ScalarData{N},s::Nodes) where {N}
 
-    regop = Regularize(X,cellsize(g),I0=origin(g),issymmetric=true)
-    Rmat,Emat = RegularizationMatrix(regop, f, s);
+    regop = Regularize(X, cellsize(g), I0=origin(g), ddftype=CartesianGrids.Yang3)
+    Rmat = RegularizationMatrix(regop, f, s);
+    Emat = InterpolationMatrix(regop, s, f);
 
-    return Rmat,Emat
+    return Rmat, Emat
 end
 
 function computew(vortexmodel::VortexModel{Nb,Ne,TU,TF})::TU where {Nb,Ne,TU,TF}
