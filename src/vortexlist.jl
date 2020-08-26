@@ -1,5 +1,5 @@
 import Base: @propagate_inbounds,getindex, setindex!,iterate,size,length,push!,
-              collect,view
+              collect, view, vcat, lastindex
 
 """
     VortexList
@@ -10,6 +10,8 @@ struct VortexList
 end
 
 VortexList() = VortexList(Vortex[])
+VortexList(v...) = VortexList(collect(v))
+VortexList(v::VortexList) = v
 
 @propagate_inbounds getindex(A::VortexList, i::Int) = A.list[i]
 @propagate_inbounds setindex!(A::VortexList, v::Vortex, i::Int) = A.list[i] = v
@@ -20,8 +22,13 @@ iterate(A::VortexList) = iterate(A.list)
 iterate(A::VortexList,I) = iterate(A.list,I)
 size(A::VortexList) = size(A.list)
 length(A::VortexList) = length(A.list)
+lastindex(A::VortexList) = lastindex(A.list)
 
 push!(bl::VortexList,b::Vortex) = push!(bl.list,b)
+
+function vcat(vl1::VortexList,vl2::VortexList)
+    return VortexList(vcat(vl1.list,vl2.list))
+end
 
 """
     collect(vl::vortexlist) -> Vector{Float64}, Vector{Float64}
