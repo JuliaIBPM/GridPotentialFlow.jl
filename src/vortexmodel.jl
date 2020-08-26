@@ -33,11 +33,15 @@ function VortexModel(g::PhysicalGrid; bodies::Union{Body,Vector{<:Body},BodyList
     if isempty(bodies) # Unregularized potential flow system without bodies
         system = PotentialFlowSystem(L)
     elseif isempty(edges) # Unregularized potential flow system with bodies
-        Rmat, Emat = computeregularizationmatrix(g,VectorData(collect(bodies)),_bodydata,_nodedata)
+        regop = Regularize(VectorData(collect(bodies)), cellsize(g), I0=origin(g), issymmetric=true, ddftype=CartesianGrids.Yang3)
+        Rmat,_ = RegularizationMatrix(regop,_bodydata,_nodedata);
+        Emat = InterpolationMatrix(regop,_nodedata,_bodydata);
         S = SaddleSystem(L,Emat,Rmat,SaddleVector(_nodedata,_bodydata))
         system = PotentialFlowSystem(S)
     else  # Regularized potential flow system
-        Rmat, Emat = computeregularizationmatrix(g,VectorData(collect(bodies)),_bodydata,_nodedata)
+        regop = Regularize(VectorData(collect(bodies)), cellsize(g), I0=origin(g), issymmetric=true, ddftype=CartesianGrids.Yang3)
+        Rmat,_ = RegularizationMatrix(regop,_bodydata,_nodedata);
+        Emat = InterpolationMatrix(regop,_nodedata,_bodydata);
         S = SaddleSystem(L,Emat,Rmat,SaddleVector(_nodedata,_bodydata))
 
         _nodedata .= 0

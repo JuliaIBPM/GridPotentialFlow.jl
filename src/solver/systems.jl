@@ -238,10 +238,6 @@ function _computevortexstrengths(Nk, k_sheddingedges::Vector{<:Integer}, P_kvec,
 
     δΓ_kvec = -δΓsys\δΓrhs
 
-    println(Γ₀)
-    println(Γw)
-    println(δΓ_kvec)
-
     return δΓ_kvec
 end
 
