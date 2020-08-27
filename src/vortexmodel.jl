@@ -40,19 +40,20 @@ function VortexModel(g::PhysicalGrid; bodies::Union{Body,Vector{<:Body},BodyList
         if isempty(edges) # Unregularized potential flow system with bodies
             system = PotentialFlowSystem(S)
         else # Regularized potential flow system
-        _nodedata .= 0
-        _bodydata .= 1
-        f₀ = constraint(S\SaddleVector(_nodedata,_bodydata));
+            _nodedata .= 0
+            _bodydata .= 1
+            f₀ = constraint(S\SaddleVector(_nodedata,_bodydata));
 
-        Df₀ = Diagonal(f₀);
-        R̃mat = deepcopy(Rmat);
-        R̃mat.M .= R̃mat.M*Df₀;
-        S̃ = SaddleSystem(L,Emat,R̃mat,SaddleVector(_nodedata,_bodydata))
+            Df₀ = Diagonal(f₀);
+            R̃mat = deepcopy(Rmat);
+            R̃mat.M .= R̃mat.M*Df₀;
+            S̃ = SaddleSystem(L,Emat,R̃mat,SaddleVector(_nodedata,_bodydata))
 
-        e_kvec = [BodyUnitVector(bodies[1],k) for k in edges]
-        d_kvec = typeof(_nodedata)[]
+            e_kvec = [BodyUnitVector(bodies[1],k) for k in edges]
+            d_kvec = typeof(_nodedata)[]
 
-        system = PotentialFlowSystem(S̃,f₀,e_kvec,d_kvec)
+            system = PotentialFlowSystem(S̃,f₀,e_kvec,d_kvec)
+        end
     end
 
     return VortexModel{length(bodies),length(edges),typeof(_nodedata),typeof(_bodydata)}(g, vortices, bodies, edges, system, _nodedata, _bodydata, _Rmat, _Emat)
@@ -157,12 +158,12 @@ function computevortexvelocities(vortexmodel::VortexModel{Nb,Ne,TU,TF},ψ::TU) w
     Ẋ_vortices = VectorData(length(collect(vortices)[1]));
     s = TU();
 
-    q = curl(ψ)/cellsize(g)
+    q = curl(ψ)
 
     grid_interpolate!(s,q.u);
-    Ẋ_vortices.u .= _Emat*s
+    Ẋ_vortices.u .= _Emat*s/cellsize(g)
     grid_interpolate!(s,q.v);
-    Ẋ_vortices.v .= _Emat*s
+    Ẋ_vortices.v .= _Emat*s/cellsize(g)
 
     return Ẋ_vortices
 end
@@ -178,7 +179,7 @@ end
 
 function computew(vortexmodel::VortexModel{Nb,Ne,TU,TF})::TU where {Nb,Ne,TU,TF}
 
-    @unpack vortices, _Rmat = vortexmodel
+    @unpack g, vortices, _Rmat = vortexmodel
 
     if isempty(vortices)
         return TU()
@@ -186,7 +187,7 @@ function computew(vortexmodel::VortexModel{Nb,Ne,TU,TF})::TU where {Nb,Ne,TU,TF}
 
     Γ = getstrengths(vortices)
     Γ[end-Ne+1:end] .= 0
-    w = _Rmat*Γ
+    w = _Rmat*Γ*cellsize(g)^2
 
     return w
 end
@@ -230,7 +231,7 @@ function computeψ(vortexmodel::VortexModel{Nb,Ne,TU,TF}, w::TU; U∞=(0.0,0.0),
 
     if !issteady(vortexmodel)
         for k in 1:Ne
-            vortices[end-Ne+k].Γ = sol.δΓ_kvec[k]
+            vortices[end-Ne+k].Γ= sol.δΓ_kvec[k]/cellsize(g)^2
         end
     end
 
@@ -239,10 +240,10 @@ function computeψ(vortexmodel::VortexModel{Nb,Ne,TU,TF}, w::TU; U∞=(0.0,0.0),
     return sol.ψ
 end
 
-function computeψ(vortexmodel::VortexModel{Nb,Ne,TU,TF}; U∞=(0.0,0.0))::TU where {Nb,Ne,TU,TF}
+function computeψ(vortexmodel::VortexModel{Nb,Ne,TU,TF}; kwargs...)::TU where {Nb,Ne,TU,TF}
 
     w = computew(vortexmodel)
-    ψ = computeψ(vortexmodel, w, U∞=U∞)
+    ψ = computeψ(vortexmodel, w; kwargs...)
 
     return ψ
 end
