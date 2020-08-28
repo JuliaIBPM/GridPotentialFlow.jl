@@ -105,7 +105,7 @@ S̃ = SaddleSystem(L,Emat,R̃mat,SaddleVector(w,ψb))
     #################################
 
     P_kvec = GridPotentialFlow._computesparsekuttaoperator.([e1,e2])
-    δΓ_kvec = GridPotentialFlow._computepointvortexstrengths(Nk, Integer[], P_kvec, [f₀,f₀], [0.0,0.0], f₀, f₀, w)
+    δΓ_kvec = GridPotentialFlow._computevortexstrengths(Nk, Integer[], P_kvec, [f₀,f₀], [0.0,0.0], f₀, f₀, w)
 
     @test δΓ_kvec == [0.0, 0.0]
 
