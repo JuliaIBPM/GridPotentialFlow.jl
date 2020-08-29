@@ -1,4 +1,4 @@
-import CartesianGrids: curl!
+import CartesianGrids: curl!, Laplacian
 import LinearAlgebra: Diagonal
 
 mutable struct VortexModel{Nb,Ne,TU,TF}
@@ -6,7 +6,7 @@ mutable struct VortexModel{Nb,Ne,TU,TF}
     vortices::VortexList
     bodies::BodyList
     edges::Vector{Int}
-    system::PotentialFlowSystem
+    system::Union{PotentialFlowSystem,Laplacian}
 
     _nodedata::TU
     _bodydata::TF
@@ -22,7 +22,7 @@ function VortexModel(g::PhysicalGrid; bodies::Union{Body,Vector{<:Body},BodyList
     elseif isa(bodies,Vector{<:Body})
         bodies = BodyList(bodies)
     end
-    vortices = VortexList(vortices)
+    vortices = VortexList(deepcopy(vortices))
 
     _nodedata = Nodes(Dual,size(g))
     _bodydata = ScalarData(length(collect(bodies)[1]))
@@ -31,7 +31,7 @@ function VortexModel(g::PhysicalGrid; bodies::Union{Body,Vector{<:Body},BodyList
     L = plan_laplacian(size(_nodedata),with_inverse=true)
 
     if isempty(bodies) # Unregularized potential flow system without bodies
-        system = PotentialFlowSystem(L)
+        system = L
     else # Potential flow system with bodies
         regop = Regularize(VectorData(collect(bodies)), cellsize(g), I0=origin(g), issymmetric=true, ddftype=CartesianGrids.Yang3)
         Rmat,_ = RegularizationMatrix(regop,_bodydata,_nodedata);
@@ -116,20 +116,20 @@ end
 
 function step!(vortexmodel::VortexModel{Nb,Ne,TU,TF}) where {Nb,Ne,TU,TF} end
 
-function computevortexvelocities(vortexmodel::VortexModel{Nb,Ne,TU,TF},X_vortices::VectorData{Nv};U∞=(0.0,0.0)) where {Nb,Ne,TU,TF,Nv}
+function computevortexvelocities(vortexmodel::VortexModel{Nb,Ne,TU,TF},X_vortices::VectorData{Nv}; U∞=(0.0,0.0), Γb=nothing) where {Nb,Ne,TU,TF,Nv}
 
     @assert Nv == length(vortexmodel.vortices)
 
     setvortexpositions!(vortexmodel,X_vortices)
-    Ẋ_vortices = computevortexvelocities(vortexmodel,U∞=U∞)
+    Ẋ_vortices = computevortexvelocities(vortexmodel,U∞=U∞,Γb=Γb)
 
     return Ẋ_vortices
 end
 
-function computevortexvelocities(vortexmodel::VortexModel{Nb,Ne,TU,TF}; U∞=(0.0,0.0)) where {Nb,Ne,TU,TF}
+function computevortexvelocities(vortexmodel::VortexModel{Nb,Ne,TU,TF}; U∞=(0.0,0.0), Γb=nothing) where {Nb,Ne,TU,TF}
 
     w = computew(vortexmodel)
-    ψ = computeψ(vortexmodel,w,U∞=U∞)
+    ψ = computeψ(vortexmodel,w,U∞=U∞,Γb=Γb)
     Ẋ_vortices = computevortexvelocities(vortexmodel,ψ)
 
     return Ẋ_vortices
@@ -192,13 +192,29 @@ function computew(vortexmodel::VortexModel{Nb,Ne,TU,TF})::TU where {Nb,Ne,TU,TF}
     return w
 end
 
-function computeψ(vortexmodel::VortexModel{Nb,0,TU,TF}, w::TU; U∞=(0.0,0.0))::TU where {Nb,TU,TF}
+function computeψ(vortexmodel::VortexModel{0,0,TU}, w::TU; U∞=(0.0,0.0))::TU where {TU}
+
+    @unpack g, system, _nodedata = vortexmodel
+
+    xg,yg = coordinates(_nodedata,g)
+    ψ = _nodedata
+    ldiv!(ψ,system,w)
+    ψ .+= U∞[1]*yg' .- U∞[2]*xg
+
+    return ψ
+end
+
+function computeψ(vortexmodel::VortexModel{Nb,0,TU,TF}, w::TU; U∞=(0.0,0.0), Γb=nothing)::TU where {Nb,TU,TF}
 
     @unpack g, bodies, system, _nodedata, _bodydata = vortexmodel
 
+    if isnothing(Γb)
+        Γb = -sum(w)
+    end
+
     xg,yg = coordinates(_nodedata,g)
     _bodydata .= -U∞[1]*(collect(bodies)[2]) .+ U∞[2]*(collect(bodies)[1]);
-    rhs = PotentialFlowRHS(w,deepcopy(_bodydata))
+    rhs = PotentialFlowRHS(w,deepcopy(_bodydata),Γb)
     sol = PotentialFlowSolution(_nodedata,_bodydata)
     ldiv!(sol,system,rhs)
     sol.ψ .+= U∞[1]*yg' .- U∞[2]*xg

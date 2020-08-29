@@ -1,8 +1,9 @@
 abstract type FlowType end
 
-struct UnregularizedPotentialFlowSolution{TU,TF}
+struct UnregularizedPotentialFlowSolution{T,TU,TF}
     ψ::TU
     f::TF
+    ψ₀::Vector{T}
 end
 
 struct SteadyRegularizedPotentialFlowSolution{T,TU,TF}
@@ -19,7 +20,7 @@ struct UnsteadyRegularizedPotentialFlowSolution{T,TU,TF}
 end
 
 function PotentialFlowSolution(ψ::TU,f::TF) where {TU,TF}
-    return UnregularizedPotentialFlowSolution{TU,TF}(ψ,f)
+    return UnregularizedPotentialFlowSolution{Float64,TU,TF}(ψ,f,Float64[])
 end
 
 function PotentialFlowSolution(ψ::TU,f̃::TF,ψ₀::Vector{T}) where {T,TU,TF}
