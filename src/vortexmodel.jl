@@ -124,8 +124,8 @@ end
 function computevortexvelocities(vortexmodel::VortexModel{Nb,Ne,TU,TF}; U∞=(0.0,0.0), Γb=nothing) where {Nb,Ne,TU,TF}
 
     w = computew(vortexmodel)
-    ψ = computeψ(vortexmodel,w,U∞=U∞,Γb=Γb)
-    Ẋ_vortices = computevortexvelocities(vortexmodel,ψ)
+    sol = solvesystem(vortexmodel,w,U∞=U∞,Γb=Γb)
+    Ẋ_vortices = computevortexvelocities(vortexmodel,sol.ψ)
 
     return Ẋ_vortices
 end
@@ -187,7 +187,7 @@ function computew(vortexmodel::VortexModel{Nb,Ne,TU,TF})::TU where {Nb,Ne,TU,TF}
     return w
 end
 
-function computeψ(vortexmodel::VortexModel{Nb,0,TU,TF}, w::TU; U∞=(0.0,0.0), Γb=nothing)::TU where {Nb,TU,TF}
+function solvesystem(vortexmodel::VortexModel{Nb,0,TU,TF}, w::TU; U∞=(0.0,0.0), Γb=nothing) where {Nb,TU,TF}
 
     @unpack g, bodies, system, _nodedata, _bodydata = vortexmodel
 
@@ -202,10 +202,10 @@ function computeψ(vortexmodel::VortexModel{Nb,0,TU,TF}, w::TU; U∞=(0.0,0.0), 
     ldiv!(sol,system,rhs)
     sol.ψ .+= U∞[1]*yg' .- U∞[2]*xg
 
-    return sol.ψ
+    return sol
 end
 
-function computeψ(vortexmodel::VortexModel{Nb,Ne,TU,TF}, w::TU; U∞=(0.0,0.0), σ=SuctionParameter.(zeros(Ne)))::TU where {Nb,Ne,TU,TF}
+function solvesystem(vortexmodel::VortexModel{Nb,Ne,TU,TF}, w::TU; U∞=(0.0,0.0), σ=SuctionParameter.(zeros(Ne))) where {Nb,Ne,TU,TF}
 
     @unpack g, vortices, bodies, edges, system, _nodedata, _bodydata, _Rmat = vortexmodel
 
@@ -236,15 +236,15 @@ function computeψ(vortexmodel::VortexModel{Nb,Ne,TU,TF}, w::TU; U∞=(0.0,0.0),
 
     sol.ψ .+= U∞[1]*yg' .- U∞[2]*xg
 
-    return sol.ψ
+    return sol
 end
 
 function computeψ(vortexmodel::VortexModel{Nb,Ne,TU,TF}; kwargs...)::TU where {Nb,Ne,TU,TF}
 
     w = computew(vortexmodel)
-    ψ = computeψ(vortexmodel, w; kwargs...)
+    sol = solvesystem(vortexmodel, w; kwargs...)
 
-    return ψ
+    return sol.ψ
 end
 
 # function computeψ(vortexmodel::VortexModel{Nb,Ne,TU,TF}; U∞=(0.0,0.0))::TU  where {Nb,Ne,TU,TF}
