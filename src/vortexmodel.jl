@@ -29,31 +29,26 @@ function VortexModel(g::PhysicalGrid; bodies::Union{Body,Vector{<:Body},BodyList
     _Rmat,_Emat = computeregularizationmatrix(g,getpositions(vortices),getstrengths(vortices),_nodedata)
 
     L = plan_laplacian(size(_nodedata),with_inverse=true)
+    regop = Regularize(VectorData(collect(bodies)), cellsize(g), I0=origin(g), issymmetric=true, ddftype=CartesianGrids.Yang3)
+    Rmat,_ = RegularizationMatrix(regop,_bodydata,_nodedata);
+    Emat = InterpolationMatrix(regop,_nodedata,_bodydata);
+    S = SaddleSystem(L,Emat,Rmat,SaddleVector(_nodedata,_bodydata))
+    if isempty(edges) # Unregularized potential flow system with bodies
+        system = PotentialFlowSystem(S)
+    else # Regularized potential flow system
+        _nodedata .= 0
+        _bodydata .= 1
+        f₀ = constraint(S\SaddleVector(_nodedata,_bodydata));
 
-    if isempty(bodies) # Unregularized potential flow system without bodies
-        system = L
-    else # Potential flow system with bodies
-        regop = Regularize(VectorData(collect(bodies)), cellsize(g), I0=origin(g), issymmetric=true, ddftype=CartesianGrids.Yang3)
-        Rmat,_ = RegularizationMatrix(regop,_bodydata,_nodedata);
-        Emat = InterpolationMatrix(regop,_nodedata,_bodydata);
-        S = SaddleSystem(L,Emat,Rmat,SaddleVector(_nodedata,_bodydata))
-        if isempty(edges) # Unregularized potential flow system with bodies
-            system = PotentialFlowSystem(S)
-        else # Regularized potential flow system
-            _nodedata .= 0
-            _bodydata .= 1
-            f₀ = constraint(S\SaddleVector(_nodedata,_bodydata));
+        Df₀ = Diagonal(f₀);
+        R̃mat = deepcopy(Rmat);
+        R̃mat.M .= R̃mat.M*Df₀;
+        S̃ = SaddleSystem(L,Emat,R̃mat,SaddleVector(_nodedata,_bodydata))
 
-            Df₀ = Diagonal(f₀);
-            R̃mat = deepcopy(Rmat);
-            R̃mat.M .= R̃mat.M*Df₀;
-            S̃ = SaddleSystem(L,Emat,R̃mat,SaddleVector(_nodedata,_bodydata))
+        e_kvec = [BodyUnitVector(bodies[1],k) for k in edges]
+        d_kvec = typeof(_nodedata)[]
 
-            e_kvec = [BodyUnitVector(bodies[1],k) for k in edges]
-            d_kvec = typeof(_nodedata)[]
-
-            system = PotentialFlowSystem(S̃,f₀,e_kvec,d_kvec)
-        end
+        system = PotentialFlowSystem(S̃,f₀,e_kvec,d_kvec)
     end
 
     return VortexModel{length(bodies),length(edges),typeof(_nodedata),typeof(_bodydata)}(g, vortices, bodies, edges, system, _nodedata, _bodydata, _Rmat, _Emat)
@@ -190,18 +185,6 @@ function computew(vortexmodel::VortexModel{Nb,Ne,TU,TF})::TU where {Nb,Ne,TU,TF}
     w = _Rmat*Γ*cellsize(g)^2
 
     return w
-end
-
-function computeψ(vortexmodel::VortexModel{0,0,TU}, w::TU; U∞=(0.0,0.0))::TU where {TU}
-
-    @unpack g, system, _nodedata = vortexmodel
-
-    xg,yg = coordinates(_nodedata,g)
-    ψ = _nodedata
-    ldiv!(ψ,system,w)
-    ψ .+= U∞[1]*yg' .- U∞[2]*xg
-
-    return ψ
 end
 
 function computeψ(vortexmodel::VortexModel{Nb,0,TU,TF}, w::TU; U∞=(0.0,0.0), Γb=nothing)::TU where {Nb,TU,TF}

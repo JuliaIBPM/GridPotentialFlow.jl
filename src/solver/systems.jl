@@ -59,6 +59,18 @@ function PotentialFlowSystem(S̃::SaddleSystem{T,Ns,Nc,TU,TF}, f₀::TF, e_kvec:
     return RegularizedPotentialFlowSystem(S̃,f₀,e_kvec,d_kvec,f̃_kvec)
 end
 
+function ldiv!(sol::UnregularizedPotentialFlowSolution, sys::UnregularizedPotentialFlowSystem{0,T,TU,TF}, rhs::UnregularizedPotentialFlowRHS{TU,TF}) where {Nb,T,TU,TF,TE}
+
+    @unpack S = sys
+    @unpack ψ, f = sol
+    @unpack w, ψb = rhs
+
+    temp_sol = S\SaddleVector(-w,TF())
+    ψ .= state(temp_sol)
+
+    return sol
+end
+
 # function ldiv!(sol::UnregularizedPotentialFlowSolution, sys::UnregularizedPotentialFlowSystem{Nb,T,TU,TF}, rhs::UnregularizedPotentialFlowRHS{TU,TF}) where {Nb,T,TU,TF,TE}
 #
 #     @unpack S = sys
@@ -164,7 +176,7 @@ function ldiv!(sol::UnsteadyRegularizedPotentialFlowSolution{T,TU,TF}, sys::Regu
 end
 
 function (\)(sys::UnregularizedPotentialFlowSystem, rhs::UnregularizedPotentialFlowRHS{TU,TF}) where {TU,TF}
-    sol = UnregularizedPotentialFlowSolution(TU(),TF())
+    sol = PotentialFlowSolution(TU(),TF())
     ldiv!(sol,sys,rhs)
     return sol
 end
