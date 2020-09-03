@@ -111,20 +111,20 @@ end
 
 function step!(vortexmodel::VortexModel{Nb,Ne,TU,TF}) where {Nb,Ne,TU,TF} end
 
-function computevortexvelocities(vortexmodel::VortexModel{Nb,Ne,TU,TF},X_vortices::VectorData{Nv}; U∞=(0.0,0.0), Γb=nothing) where {Nb,Ne,TU,TF,Nv}
+function computevortexvelocities(vortexmodel::VortexModel{Nb,Ne,TU,TF},X_vortices::VectorData{Nv}; kwargs...) where {Nb,Ne,TU,TF,Nv}
 
     @assert Nv == length(vortexmodel.vortices)
 
     setvortexpositions!(vortexmodel,X_vortices)
-    Ẋ_vortices = computevortexvelocities(vortexmodel,U∞=U∞,Γb=Γb)
+    Ẋ_vortices = computevortexvelocities(vortexmodel; kwargs...)
 
     return Ẋ_vortices
 end
 
-function computevortexvelocities(vortexmodel::VortexModel{Nb,Ne,TU,TF}; U∞=(0.0,0.0), Γb=nothing) where {Nb,Ne,TU,TF}
+function computevortexvelocities(vortexmodel::VortexModel{Nb,Ne,TU,TF}; kwargs...) where {Nb,Ne,TU,TF}
 
     w = computew(vortexmodel)
-    sol = solvesystem(vortexmodel,w,U∞=U∞,Γb=Γb)
+    sol = solvesystem(vortexmodel,w; kwargs...)
     Ẋ_vortices = computevortexvelocities(vortexmodel,sol.ψ)
 
     return Ẋ_vortices
@@ -182,21 +182,24 @@ function computew(vortexmodel::VortexModel{Nb,Ne,TU,TF})::TU where {Nb,Ne,TU,TF}
 
     Γ = getstrengths(vortices)
     Γ[end-Ne+1:end] .= 0
-    w = _Rmat*Γ*cellsize(g)^2
+    w = _Rmat*Γ # _Rmat takes physical cell size into account
 
     return w
 end
 
-function solvesystem(vortexmodel::VortexModel{Nb,0,TU,TF}, w::TU; U∞=(0.0,0.0), Γb=nothing) where {Nb,TU,TF}
+function solvesystem(vortexmodel::VortexModel{Nb,0,TU,TF}, wphysical::TU; Ub=(0.0,0.0), U∞=(0.0,0.0), Γb=nothing) where {Nb,TU,TF}
 
     @unpack g, bodies, system, _nodedata, _bodydata = vortexmodel
+
+    # Scale w to grid with unit cell size
+    w = deepcopy(wphysical)*cellsize(g)^2
 
     if isnothing(Γb)
         Γb = -sum(w)
     end
 
     xg,yg = coordinates(_nodedata,g)
-    _bodydata .= -U∞[1]*(collect(bodies)[2]) .+ U∞[2]*(collect(bodies)[1]);
+    _bodydata .= (Ub[1]-U∞[1])*(collect(bodies)[2]) .+ (-Ub[2]+U∞[2])*(collect(bodies)[1]);
     rhs = PotentialFlowRHS(w,deepcopy(_bodydata),Γb)
     sol = PotentialFlowSolution(_nodedata,_bodydata)
     ldiv!(sol,system,rhs)
@@ -205,14 +208,17 @@ function solvesystem(vortexmodel::VortexModel{Nb,0,TU,TF}, w::TU; U∞=(0.0,0.0)
     return sol
 end
 
-function solvesystem(vortexmodel::VortexModel{Nb,Ne,TU,TF}, w::TU; U∞=(0.0,0.0), σ=SuctionParameter.(zeros(Ne))) where {Nb,Ne,TU,TF}
+function solvesystem(vortexmodel::VortexModel{Nb,Ne,TU,TF}, wphysical::TU; Ub=(0.0,0.0), U∞=(0.0,0.0), σ=SuctionParameter.(zeros(Ne))) where {Nb,Ne,TU,TF}
 
     @unpack g, vortices, bodies, edges, system, _nodedata, _bodydata, _Rmat = vortexmodel
 
     @assert length(edges) == length(σ)
 
+    # Scale w to grid with unit cell size
+    w = deepcopy(wphysical)*cellsize(g)^2
+
     xg,yg = coordinates(_nodedata,g)
-    _bodydata .= -U∞[1]*(collect(bodies)[2]) .+ U∞[2]*(collect(bodies)[1]);
+    _bodydata .= (Ub[1]-U∞[1])*(collect(bodies)[2]) .+ (-Ub[2]+U∞[2])*(collect(bodies)[1]);
     rhs = PotentialFlowRHS(w,deepcopy(_bodydata),σ)
 
     # This line does the same as the next block of code, but creates new instances of TU and TF for the solution in systems.jl
@@ -259,17 +265,17 @@ end
 #     return sol.ψ
 # end
 
-function curl!(nodepair::NodePair{Dual, Dual, NX, NY},
-               s::Nodes{Dual,NX, NY}) where {NX, NY}
-
-    view(nodepair.u,2:NX-1,2:NY-1) .= 0.5*(view(s,2:NX-1,3:NY) .- view(s,2:NX-1,1:NY-2))
-    #@inbounds for y in 1:NY-1, x in 1:NX
-    #    edges.u[x,y] = s[x,y+1] - s[x,y]
-    #end
-
-    view(nodepair.v,2:NX-1,2:NY-1) .= 0.5*(view(s,1:NX-2,2:NY-1) .- view(s,3:NX,2:NY-1))
-    #@inbounds for y in 1:NY, x in 1:NX-1
-    #    edges.v[x,y] = s[x,y] - s[x+1,y]
-    #end
-    nodepair
-end
+# function curl!(nodepair::NodePair{Dual, Dual, NX, NY},
+#                s::Nodes{Dual,NX, NY}) where {NX, NY}
+#
+#     view(nodepair.u,2:NX-1,2:NY-1) .= 0.5*(view(s,2:NX-1,3:NY) .- view(s,2:NX-1,1:NY-2))
+#     #@inbounds for y in 1:NY-1, x in 1:NX
+#     #    edges.u[x,y] = s[x,y+1] - s[x,y]
+#     #end
+#
+#     view(nodepair.v,2:NX-1,2:NY-1) .= 0.5*(view(s,1:NX-2,2:NY-1) .- view(s,3:NX,2:NY-1))
+#     #@inbounds for y in 1:NY, x in 1:NX-1
+#     #    edges.v[x,y] = s[x,y] - s[x+1,y]
+#     #end
+#     nodepair
+# end
