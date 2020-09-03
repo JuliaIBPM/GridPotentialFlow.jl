@@ -265,6 +265,32 @@ end
 #     return sol.ψ
 # end
 
+function computeimpulse(vortexmodel::VortexModel{Nb,Ne,TU,TF}; Ub=(0.0,0.0), U∞=(0.0,0.0), kwargs...) where {Nb,Ne,TU,TF}
+
+    @unpack g, vortices, bodies = vortexmodel
+
+    w = computew(vortexmodel)
+    sol = solvesystem(vortexmodel, w; Ub=Ub, U∞=U∞, kwargs...)
+
+    xg, yg = coordinates(w,g)
+    Δx = cellsize(g)
+
+    # Formula 6.16
+    volumeintegral_x = Δx^2*sum(w.*yg)
+    volumeintegral_y = Δx^2*sum(-w.*xg)
+    if !isempty(bodies)
+        ncrossUb = -(normalmid(bodies[1])[1]*Ub[2] - normalmid(bodies[1])[2]*Ub[1])
+        surfaceintegral_x = _surfaceintegrate(bodies[1],(sol.f./dlength(bodies[1]) + ncrossUb).*(bodies[1].y))
+        surfaceintegral_y = _surfaceintegrate(bodies[1],-(sol.f./dlength(bodies[1]) + ncrossUb).*(bodies[1].x))
+    end
+
+    P_x = volumeintegral_x + surfaceintegral_x - _calculatevolume(bodies[1])*U∞[1]
+    P_y = volumeintegral_y + surfaceintegral_y - _calculatevolume(bodies[1])*U∞[2]
+
+    return P_x, P_y
+
+end
+
 # function curl!(nodepair::NodePair{Dual, Dual, NX, NY},
 #                s::Nodes{Dual,NX, NY}) where {NX, NY}
 #
@@ -279,3 +305,19 @@ end
 #     #end
 #     nodepair
 # end
+
+# Only works for closed bodies for now
+function _surfaceintegrate(body::Body{N,C},integrand::Array{Float64,1}) where {N,C}
+    func = Array{Float64,1}(undef, N+1)
+    func[1:end-1] .= integrand
+    func[end] = integrand[1]
+    s = sum(dlength(body).*(func[1:end-1] + func[2:end]))/2
+    return s
+end
+
+function _calculatevolume(body::Body{N,RigidBodyTools.ClosedBody}) where {N}
+
+    ip1(i) = 1+mod(i,N)
+    V = sum([body.x[i]*body.y[ip1(i)] - body.y[i]*body.x[ip1(i)] for i = 1:N])/2
+    return V
+end
