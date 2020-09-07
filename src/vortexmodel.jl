@@ -10,11 +10,13 @@ mutable struct VortexModel{Nb,Ne,TU,TF}
 
     _nodedata::TU
     _bodydata::TF
-    _Rmat::RegularizationMatrix{TU}
-    _Emat::InterpolationMatrix{TU}
+    _w::TU
+    _ψb::TF
+    _Rmat::Union{Nothing,RegularizationMatrix{TU}}
+    _Emat::Union{Nothing,InterpolationMatrix{TU}}
 end
 
-function VortexModel(g::PhysicalGrid; bodies::Union{Body,Vector{<:Body},BodyList}=BodyList(), vortices::Union{Vortex,Vector{<:Vortex},VortexList}=VortexList(), edges::Vector{<:Integer}=Int[])
+function VortexModel(g::PhysicalGrid; bodies::Union{Body,Vector{<:Body},BodyList}=BodyList(),  vortices::Union{Vortex,Vector{<:Vortex},VortexList}=VortexList(), edges::Vector{<:Integer}=Int[])
 
     # Ensure that bodies and vortices are of type BodyList and VortexList
     if isa(bodies,Body)
@@ -22,11 +24,11 @@ function VortexModel(g::PhysicalGrid; bodies::Union{Body,Vector{<:Body},BodyList
     elseif isa(bodies,Vector{<:Body})
         bodies = BodyList(bodies)
     end
-    vortices = VortexList(deepcopy(vortices))
 
     _nodedata = Nodes(Dual,size(g))
     _bodydata = ScalarData(length(collect(bodies)[1]))
-    _Rmat,_Emat = computeregularizationmatrix(g,getpositions(vortices),getstrengths(vortices),_nodedata)
+    _w = Nodes(Dual,size(g))
+    _ψb = ScalarData(length(collect(bodies)[1]))
 
     L = plan_laplacian(size(_nodedata),with_inverse=true)
     regop = Regularize(VectorData(collect(bodies)), cellsize(g), I0=origin(g), issymmetric=true, ddftype=CartesianGrids.Yang3)
@@ -51,11 +53,23 @@ function VortexModel(g::PhysicalGrid; bodies::Union{Body,Vector{<:Body},BodyList
         system = PotentialFlowSystem(S̃,f₀,e_kvec,d_kvec)
     end
 
-    return VortexModel{length(bodies),length(edges),typeof(_nodedata),typeof(_bodydata)}(g, vortices, bodies, edges, system, _nodedata, _bodydata, _Rmat, _Emat)
+    vortexmodel =  VortexModel{length(bodies),length(edges),typeof(_nodedata),typeof(_bodydata)}(g, VortexList(), bodies, edges, system, _nodedata, _bodydata, _w, _ψb, nothing, nothing)
+
+    setvortices!(vortexmodel, vortices)
+
+    return vortexmodel
 end
 
 function issteady(vortexmodel::VortexModel)
     if isempty(vortexmodel.vortices)
+        return true
+    else
+        return false
+    end
+end
+
+function isregulated(vortexmodel::VortexModel{Nb,Ne}) where {Nb,Ne}
+    if Ne > 0
         return true
     else
         return false
@@ -68,18 +82,14 @@ function setvortices!(vortexmodel::VortexModel{Nb,Ne,TU,TF}, vortices::Union{Vor
 
     vortexmodel.vortices = vortices
 
-    if computeregularization
-        vortexmodel._Rmat, vortexmodel._Emat = computeregularizationmatrix(vortexmodel.g,getpositions(vortices),getstrengths(vortices),vortexmodel._nodedata)
-    end
+    if computeregularization updatevorticesregularization(vortexmodel) end
 end
 
 function pushvortices!(vortexmodel::VortexModel{Nb,Ne,TU,TF}, vortices...; computeregularization=true) where {Nb,Ne,TU,TF}
 
     push!(vortexmodel.vortices.list,vortices...)
 
-    if computeregularization
-        vortexmodel._Rmat, vortexmodel._Emat = computeregularizationmatrix(vortexmodel.g,getpositions(vortexmodel.vortices),getstrengths(vortexmodel.vortices),vortexmodel._nodedata)
-    end
+    if computeregularization updatevorticesregularization(vortexmodel) end
 end
 
 function setvortexpositions!(vortexmodel::VortexModel{Nb,Ne,TU,TF}, X_vortices::VectorData{Nv}; computeregularization=true) where {Nb,Ne,TU,TF,Nv}
@@ -88,25 +98,12 @@ function setvortexpositions!(vortexmodel::VortexModel{Nb,Ne,TU,TF}, X_vortices::
 
     setpositions!(vortexmodel.vortices,X_vortices.u,X_vortices.v)
 
-    if computeregularization
-        vortexmodel._Rmat, vortexmodel._Emat = computeregularizationmatrix(vortexmodel.g,getpositions(vortexmodel.vortices),getstrengths(vortexmodel.vortices),vortexmodel._nodedata)
-    end
+    if computeregularization updatevorticesregularization(vortexmodel) end
 end
 
 function getvortexpositions(vortexmodel::VortexModel{Nb,Ne,TU,TF}) where {Nb,Ne,TU,TF}
 
     return getpositions(vortexmodel.vortices)
-end
-
-function computed_kvec(vortexmodel::VortexModel{Nb,Ne,TU,TF},indices::Vector{Int}) where {Nb,Ne,TU,TF}
-    Γ = getstrengths(vortexmodel.vortices)
-    d_kvec = TU[]
-    for k in indices
-        Γ .= 0
-        Γ[k] = 1
-        push!(d_kvec,vortexmodel._Rmat*Γ)
-    end
-    return d_kvec
 end
 
 function step!(vortexmodel::VortexModel{Nb,Ne,TU,TF}) where {Nb,Ne,TU,TF} end
@@ -123,8 +120,13 @@ end
 
 function computevortexvelocities(vortexmodel::VortexModel{Nb,Ne,TU,TF}; kwargs...) where {Nb,Ne,TU,TF}
 
-    w = computew(vortexmodel)
-    sol = solvesystem(vortexmodel,w; kwargs...)
+    computew!(vortexmodel._w,vortexmodel)
+    sol = solvesystem!(vortexmodel._nodedata, vortexmodel._bodydata, vortexmodel, vortexmodel._w; kwargs...)
+
+    for k in 1:Ne
+        vortexmodel.vortices[end-Ne+k].Γ= sol.δΓ_kvec[k]/cellsize(vortexmodel.g)^2
+    end
+
     Ẋ_vortices = computevortexvelocities(vortexmodel,sol.ψ)
 
     return Ẋ_vortices
@@ -172,85 +174,110 @@ function computeregularizationmatrix(g::PhysicalGrid,X::VectorData{N},f::ScalarD
     return Rmat, Emat
 end
 
+function updatevorticesregularization(vortexmodel::VortexModel{Nb,Ne,TU,TF}) where {Nb,Ne,TU,TF}
+
+    @unpack g, vortices, _nodedata, system = vortexmodel
+
+    if isempty(vortices) return end
+
+    vortexmodel._Rmat, vortexmodel._Emat = computeregularizationmatrix(vortexmodel.g,getpositions(vortices),getstrengths(vortices),vortexmodel._nodedata)
+
+    if isregulated(vortexmodel)
+        d_kvec = computed_kvec(vortexmodel,collect(length(vortices)-(Ne-1):length(vortices)))
+        setd_kvec!(system, d_kvec)
+    end
+end
+
+function computed_kvec(vortexmodel::VortexModel{Nb,Ne,TU,TF},indices::Vector{Int}) where {Nb,Ne,TU,TF}
+    Γ = getstrengths(vortexmodel.vortices)
+    d_kvec = TU[]
+    for k in indices
+        Γ .= 0
+        Γ[k] = 1
+        push!(d_kvec,vortexmodel._Rmat*Γ)
+    end
+    return d_kvec
+end
+
 function computew(vortexmodel::VortexModel{Nb,Ne,TU,TF})::TU where {Nb,Ne,TU,TF}
 
     @unpack g, vortices, _Rmat = vortexmodel
 
-    if isempty(vortices)
-        return TU()
-    end
-
-    Γ = getstrengths(vortices)
-    Γ[end-Ne+1:end] .= 0
-    w = _Rmat*Γ # _Rmat takes physical cell size into account
+    w = TU()
+    computew!(w,vortexmodel)
 
     return w
 end
 
-function solvesystem(vortexmodel::VortexModel{Nb,0,TU,TF}, wphysical::TU; Ub=(0.0,0.0), U∞=(0.0,0.0), Γb=nothing) where {Nb,TU,TF}
+function computew!(w,vortexmodel::VortexModel{Nb,Ne,TU,TF})::TU where {Nb,Ne,TU,TF}
 
-    @unpack g, bodies, system, _nodedata, _bodydata = vortexmodel
+    @unpack g, vortices, _Rmat = vortexmodel
 
-    # Scale w to grid with unit cell size
-    w = deepcopy(wphysical)*cellsize(g)^2
-
-    if isnothing(Γb)
-        Γb = -sum(w)
+    if isempty(vortices)
+        w .= 0.0
+        return w
     end
 
-    xg,yg = coordinates(_nodedata,g)
-    _bodydata .= (Ub[1]-U∞[1])*(collect(bodies)[2]) .+ (-Ub[2]+U∞[2])*(collect(bodies)[1]);
-    rhs = PotentialFlowRHS(w,deepcopy(_bodydata),Γb)
-    sol = PotentialFlowSolution(_nodedata,_bodydata)
+    Γ = getstrengths(vortices)
+    Γ[end-Ne+1:end] .= 0
+    w .= _Rmat*Γ # _Rmat takes physical cell size into account
+
+    return w
+end
+
+function solvesystem!(sol, vortexmodel::VortexModel{Nb,Ne,TU,TF}, wphysical::TU; Ub=(0.0,0.0), U∞=(0.0,0.0), Γb=nothing, σ=SuctionParameter.(zeros(Ne))) where {Nb,Ne,TU,TF}
+
+    @unpack g, vortices, bodies, edges, system, _nodedata, _bodydata, _w, _ψb = vortexmodel
+
+    # Scale w to grid with unit cell size
+    _w .= wphysical*cellsize(g)^2
+
+    _ψb .= (Ub[1]-U∞[1])*(collect(bodies)[2]) .+ (-Ub[2]+U∞[2])*(collect(bodies)[1]);
+
+    if !isregulated(vortexmodel)
+        rhs = PotentialFlowRHS(_w,_ψb,Γb)
+    else
+        rhs = PotentialFlowRHS(_w,_ψb,σ)
+    end
+
     ldiv!(sol,system,rhs)
+
+    xg,yg = coordinates(_nodedata,g)
     sol.ψ .+= U∞[1]*yg' .- U∞[2]*xg
 
     return sol
 end
 
-function solvesystem(vortexmodel::VortexModel{Nb,Ne,TU,TF}, wphysical::TU; Ub=(0.0,0.0), U∞=(0.0,0.0), σ=SuctionParameter.(zeros(Ne))) where {Nb,Ne,TU,TF}
+function solvesystem!(ψ::TU, f::TF, vortexmodel::VortexModel{Nb,Ne,TU,TF}, wphysical::TU; kwargs...) where {Nb,Ne,TU,TF}
 
-    @unpack g, vortices, bodies, edges, system, _nodedata, _bodydata, _Rmat = vortexmodel
-
-    @assert length(edges) == length(σ)
-
-    # Scale w to grid with unit cell size
-    w = deepcopy(wphysical)*cellsize(g)^2
-
-    xg,yg = coordinates(_nodedata,g)
-    _bodydata .= (Ub[1]-U∞[1])*(collect(bodies)[2]) .+ (-Ub[2]+U∞[2])*(collect(bodies)[1]);
-    rhs = PotentialFlowRHS(w,deepcopy(_bodydata),σ)
-
-    # This line does the same as the next block of code, but creates new instances of TU and TF for the solution in systems.jl
-    # sol = system\rhs
-
-    if issteady(vortexmodel)
-        sol = PotentialFlowSolution(_nodedata,_bodydata,zeros(Nb))
+    if !isregulated(vortexmodel)
+        sol = PotentialFlowSolution(ψ,f)
+    elseif issteady(vortexmodel)
+        sol = PotentialFlowSolution(ψ,f,zeros(Nb))
     else
-        sol = PotentialFlowSolution(_nodedata,_bodydata,zeros(Nb),zeros(Ne))
-        d_kvec = computed_kvec(vortexmodel,collect(length(vortices)-(Ne-1):length(vortices)))
-        setd_kvec!(system, d_kvec)
+        sol = PotentialFlowSolution(ψ,f,zeros(Nb),zeros(Ne))
     end
 
-    ldiv!(sol,system,rhs)
+    solvesystem!(sol,vortexmodel,wphysical;kwargs...)
 
-    if !issteady(vortexmodel)
-        for k in 1:Ne
-            vortices[end-Ne+k].Γ= sol.δΓ_kvec[k]/cellsize(g)^2
-        end
-    end
+    return sol
+end
 
-    sol.ψ .+= U∞[1]*yg' .- U∞[2]*xg
+function solvesystem(vortexmodel::VortexModel{Nb,Ne,TU,TF}, wphysical::TU; kwargs...) where {Nb,Ne,TU,TF}
+
+    solvesystem!(TU(),TF(),vortexmodel,wphysical;kwargs...)
 
     return sol
 end
 
 function computeψ(vortexmodel::VortexModel{Nb,Ne,TU,TF}; kwargs...)::TU where {Nb,Ne,TU,TF}
 
-    w = computew(vortexmodel)
-    sol = solvesystem(vortexmodel, w; kwargs...)
+    ψ = TU()
 
-    return sol.ψ
+    computew!(vortexmodel._w, vortexmodel)
+    solvesystem!(ψ, vortexmodel._bodydata, vortexmodel, vortexmodel._w; kwargs...)
+
+    return ψ
 end
 
 # function computeψ(vortexmodel::VortexModel{Nb,Ne,TU,TF}; U∞=(0.0,0.0))::TU  where {Nb,Ne,TU,TF}
@@ -265,12 +292,9 @@ end
 #     return sol.ψ
 # end
 
-function computeimpulse(vortexmodel::VortexModel{Nb,Ne,TU,TF}; Ub=(0.0,0.0), U∞=(0.0,0.0), kwargs...) where {Nb,Ne,TU,TF}
+function computeimpulse(vortexmodel::VortexModel{Nb,Ne,TU,TF}, w::TU, f::TF; Ub=(0.0,0.0), U∞=(0.0,0.0), kwargs...) where {Nb,Ne,TU,TF}
 
     @unpack g, vortices, bodies = vortexmodel
-
-    w = computew(vortexmodel)
-    sol = solvesystem(vortexmodel, w; Ub=Ub, U∞=U∞, kwargs...)
 
     xg, yg = coordinates(w,g)
     Δx = cellsize(g)
@@ -280,15 +304,24 @@ function computeimpulse(vortexmodel::VortexModel{Nb,Ne,TU,TF}; Ub=(0.0,0.0), U�
     volumeintegral_y = Δx^2*sum(-w.*xg)
     if !isempty(bodies)
         ncrossUb = -(normalmid(bodies[1])[1]*Ub[2] - normalmid(bodies[1])[2]*Ub[1])
-        surfaceintegral_x = _surfaceintegrate(bodies[1],(sol.f./dlength(bodies[1]) + ncrossUb).*(bodies[1].y))
-        surfaceintegral_y = _surfaceintegrate(bodies[1],-(sol.f./dlength(bodies[1]) + ncrossUb).*(bodies[1].x))
+        surfaceintegral_x = _surfaceintegrate(bodies[1],(f./dlength(bodies[1]) + ncrossUb).*(bodies[1].y))
+        surfaceintegral_y = _surfaceintegrate(bodies[1],-(f./dlength(bodies[1]) + ncrossUb).*(bodies[1].x))
     end
 
     P_x = volumeintegral_x + surfaceintegral_x - _calculatevolume(bodies[1])*U∞[1]
     P_y = volumeintegral_y + surfaceintegral_y - _calculatevolume(bodies[1])*U∞[2]
 
     return P_x, P_y
+end
 
+function computeimpulse(vortexmodel::VortexModel{Nb,Ne,TU,TF}; kwargs...) where {Nb,Ne,TU,TF}
+
+    computew!(vortexmodel._w,vortexmodel)
+    solvesystem!(vortexmodel._nodedata, vortexmodel._bodydata, vortexmodel, vortexmodel._w; kwargs...)
+
+    P_x, P_y = computeimpulse(vortexmodel, vortexmodel._w, vortexmodel._bodydata; kwargs...)
+
+    return P_x, P_y
 end
 
 # function curl!(nodepair::NodePair{Dual, Dual, NX, NY},
