@@ -178,11 +178,9 @@ function updatevorticesregularization(vortexmodel::VortexModel{Nb,Ne,TU,TF}) whe
 
     @unpack g, vortices, _nodedata, system = vortexmodel
 
-    if isempty(vortices) return end
-
     vortexmodel._Rmat, vortexmodel._Emat = computeregularizationmatrix(vortexmodel.g,getpositions(vortices),getstrengths(vortices),vortexmodel._nodedata)
 
-    if isregulated(vortexmodel)
+    if isregulated(vortexmodel) && !isempty(vortices)
         d_kvec = computed_kvec(vortexmodel,collect(length(vortices)-(Ne-1):length(vortices)))
         setd_kvec!(system, d_kvec)
     end
