@@ -10,11 +10,11 @@ struct RegularizedPotentialFlowRHS{TU,TF,TSP<:Union{SuctionParameter,SuctionPara
     f̃lim_kvec::Vector{TSP}
 end
 
-function PotentialFlowRHS(w::AbstractMatrix,ψb::AbstractVector,Γ::Union{Nothing,Float64}=nothing)
+function PotentialFlowRHS(w::AbstractMatrix,ψb::AbstractVector;Γ::Union{Nothing,Real,Vector{<:Real}}=nothing)
     if isnothing(Γ)
         Γ = -sum(w)
     end
-    return UnregularizedPotentialFlowRHS(w,ψb,[Γ])
+    return UnregularizedPotentialFlowRHS(w,ψb,[Γ...])
 end
 
 function PotentialFlowRHS(w::AbstractMatrix,ψb::AbstractVector,f̃lim_kvec::Vector{TSP}) where {TSP<:Union{SuctionParameter,SuctionParameterRange}}

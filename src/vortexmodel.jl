@@ -25,6 +25,9 @@ function VortexModel(g::PhysicalGrid; bodies::Union{Body,Vector{<:Body},BodyList
         bodies = BodyList(bodies)
     end
 
+    Nb = length(bodies)
+    Ne = length(edges)
+
     _nodedata = Nodes(Dual,size(g))
     _bodydata = ScalarData(length(collect(bodies)[1]))
     _w = Nodes(Dual,size(g))
@@ -36,7 +39,11 @@ function VortexModel(g::PhysicalGrid; bodies::Union{Body,Vector{<:Body},BodyList
     Emat = InterpolationMatrix(regop,_nodedata,_bodydata);
     S = SaddleSystem(L,Emat,Rmat,SaddleVector(_nodedata,_bodydata))
     if isempty(edges) # Unregularized potential flow system with bodies
-        system = PotentialFlowSystem(S)
+        _TF_ones = zeros(length(collect(bodies)[1]),Nb)
+        for i in 1:Nb
+            _TF_ones[getrange(bodies,i),i] .= 1;
+        end
+        system = PotentialFlowSystem(S,_TF_ones)
     else # Regularized potential flow system
         _nodedata .= 0
         _bodydata .= 1
@@ -53,7 +60,7 @@ function VortexModel(g::PhysicalGrid; bodies::Union{Body,Vector{<:Body},BodyList
         system = PotentialFlowSystem(S̃,f₀,e_kvec,d_kvec)
     end
 
-    vortexmodel =  VortexModel{length(bodies),length(edges),typeof(_nodedata),typeof(_bodydata)}(g, VortexList(), bodies, edges, system, _nodedata, _bodydata, _w, _ψb, nothing, nothing)
+    vortexmodel =  VortexModel{Nb,Ne,typeof(_nodedata),typeof(_bodydata)}(g, VortexList(), bodies, edges, system, _nodedata, _bodydata, _w, _ψb, nothing, nothing)
 
     setvortices!(vortexmodel, vortices)
 
@@ -223,17 +230,25 @@ function computew!(w,vortexmodel::VortexModel{Nb,Ne,TU,TF})::TU where {Nb,Ne,TU,
     return w
 end
 
-function solvesystem!(sol, vortexmodel::VortexModel{Nb,Ne,TU,TF}, wphysical::TU; Ub=(0.0,0.0), U∞=(0.0,0.0), Γb=nothing, σ=SuctionParameter.(zeros(Ne))) where {Nb,Ne,TU,TF}
+function solvesystem!(sol, vortexmodel::VortexModel{Nb,Ne,TU,TF}, wphysical::TU; Ub::Union{Tuple{Float64,Float64},Array{Tuple{Float64,Float64}}}=fill((0.0,0.0),Nb), U∞=(0.0,0.0), Γb=nothing, σ=SuctionParameter.(zeros(Ne))) where {Nb,Ne,TU,TF}
 
     @unpack g, vortices, bodies, edges, system, _nodedata, _bodydata, _w, _ψb = vortexmodel
 
     # Scale w to grid with unit cell size
     _w .= wphysical*cellsize(g)^2
+    # Convert Ub to array of tuples
+    if Ub isa Tuple
+        Ub = [Ub]
+    end
 
-    _ψb .= (Ub[1]-U∞[1])*(collect(bodies)[2]) .+ (-Ub[2]+U∞[2])*(collect(bodies)[1]);
+    _ψb .= -U∞[1]*(collect(bodies)[2]) .+ U∞[2]*(collect(bodies)[1]);
+
+    for i in 1:Nb
+        _ψb[getrange(bodies,i)] .+= Ub[i][1]*(collect(bodies[i])[2]) .- Ub[i][2]*(collect(bodies[i])[1]);
+    end
 
     if !isregulated(vortexmodel)
-        rhs = PotentialFlowRHS(_w,_ψb,Γb)
+        rhs = PotentialFlowRHS(_w,_ψb,Γ=Γb)
     else
         rhs = PotentialFlowRHS(_w,_ψb,σ)
     end

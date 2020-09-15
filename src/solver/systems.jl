@@ -7,14 +7,12 @@ abstract type PotentialFlowSystem end
 struct UnregularizedPotentialFlowSystem{Nb,T,TU,TF} <: PotentialFlowSystem
     S::SaddleSystem
     _TU_zeros::TU
-    _TF_ones::TF
+    _TF_ones::Array
 
-    function UnregularizedPotentialFlowSystem(S::SaddleSystem{T,Ns,Nc,TU,TF}) where {T,Ns,Nc,TU,TF}
+    function UnregularizedPotentialFlowSystem(S::SaddleSystem{T,Ns,Nc,TU,TF},_TF_ones) where {T,Ns,Nc,TU,TF}
         _TU_zeros = TU()
         _TU_zeros .= 0
-        _TF_ones = TF()
-        _TF_ones .= 1
-        new{1,T,TU,TF}(S, _TU_zeros, _TF_ones)
+        new{size(_TF_ones,2),T,TU,TF}(S, _TU_zeros, _TF_ones)
     end
 end
 
@@ -46,8 +44,8 @@ struct RegularizedPotentialFlowSystem{Nb,Nk,T,TU,TF,TE} <: PotentialFlowSystem
 
 end
 
-function PotentialFlowSystem(S::SaddleSystem{T,Ns,Nc,TU,TF}) where {T,Ns,Nc,TU,TF}
-    return UnregularizedPotentialFlowSystem(S) # Only works for 1 body for now
+function PotentialFlowSystem(S::SaddleSystem{T,Ns,Nc,TU,TF},_TF_ones) where {T,Ns,Nc,TU,TF}
+    return UnregularizedPotentialFlowSystem(S,_TF_ones) # Only works for 1 body for now
 end
 
 function PotentialFlowSystem(S̃::SaddleSystem{T,Ns,Nc,TU,TF}, f₀::TF, e_kvec::Vector{TE}) where {T,Ns,Nc,TU,TF,TE}
@@ -59,13 +57,13 @@ function PotentialFlowSystem(S̃::SaddleSystem{T,Ns,Nc,TU,TF}, f₀::TF, e_kvec:
     return RegularizedPotentialFlowSystem(S̃,f₀,e_kvec,d_kvec,f̃_kvec)
 end
 
-function ldiv!(sol::UnregularizedPotentialFlowSolution, sys::UnregularizedPotentialFlowSystem{0,T,TU,TF}, rhs::UnregularizedPotentialFlowRHS{TU,TF}) where {T,TU,TF,TE}
+function ldiv!(sol::UnregularizedPotentialFlowSolution{T,TU,TF}, sys::UnregularizedPotentialFlowSystem{0,T,TU,TF}, rhs::UnregularizedPotentialFlowRHS{TU,TF}) where {T,TU,TF,TE}
 
     @unpack S = sys
     @unpack ψ, f = sol
     @unpack w, ψb = rhs
 
-    temp_sol = S\SaddleVector(-w,TF())
+    temp_sol = S\SaddleVector(-w,ψb)
     ψ .= state(temp_sol)
 
     return sol
@@ -94,12 +92,10 @@ function ldiv!(sol::UnregularizedPotentialFlowSolution{T,TU,TF}, sys::Unregulari
     ψ .= state(temp_sol_1)
     f .= constraint(temp_sol_1)
 
-    Γ₀ = _TF_ones'*(S.S⁻¹*_TF_ones)
-    ψ₀ = -1/Γ₀*(Γb[1]-_TF_ones'*f)
+    S₀ = Matrix(_TF_ones'*(S.S⁻¹*_TF_ones))
+    ψ₀ = -S₀\(Γb-_TF_ones'*f)
 
-    ψ₀vec = ψ₀*_TF_ones
-
-    temp_sol_2 = S\SaddleVector(_TU_zeros,ψ₀vec)
+    temp_sol_2 = S\SaddleVector(_TU_zeros,_TF_ones*ψ₀)
 
     f .= f .- constraint(temp_sol_2)
     ψ .= reshape(-S.A⁻¹*(reshape(w,:) + S.B₁ᵀ*f),size(w))
