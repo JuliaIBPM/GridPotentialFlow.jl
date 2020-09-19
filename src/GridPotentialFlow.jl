@@ -8,8 +8,6 @@ using RecursiveArrayTools
 @reexport using RigidBodyTools
 @reexport using ConstrainedSystems
 
-export BodyUnitVector, SuctionParameter, SuctionParameterRange, PotentialFlowSolution, PotentialFlowRHS, UnregularizedPotentialFlowSystem, RegularizedPotentialFlowSystem, PotentialFlowSystem, setd_kvec!, Vortex, updateposition!, VortexList, VortexModel, computeψ, computew, computevortexvelocities, computeregularizationmatrix, getstrengths, getpositions, setvortexpositions!, getvortexpositions, setvortices!, pushvortices!, computeimpulse
-
 include("bodyunitvectors.jl")
 include("suctionparameter.jl")
 

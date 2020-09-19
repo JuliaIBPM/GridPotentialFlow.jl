@@ -1,3 +1,5 @@
+export VortexList
+
 import Base: @propagate_inbounds,getindex, setindex!,iterate,size,length,push!,
               collect, view, vcat, lastindex
 

@@ -1,18 +1,20 @@
-abstract type FlowType end
+export PotentialFlowSolution
 
-struct UnregularizedPotentialFlowSolution{T,TU,TF}
+abstract type PotentialFlowSolution end
+
+struct UnregularizedPotentialFlowSolution{T,TU,TF} <: PotentialFlowSolution
     ψ::TU
     f::TF
     ψ₀::Vector{T}
 end
 
-struct SteadyRegularizedPotentialFlowSolution{T,TU,TF}
+struct SteadyRegularizedPotentialFlowSolution{T,TU,TF} <: PotentialFlowSolution
     ψ::TU
     f̃::TF
     ψ₀::Vector{T}
 end
 
-struct UnsteadyRegularizedPotentialFlowSolution{T,TU,TF}
+struct UnsteadyRegularizedPotentialFlowSolution{T,TU,TF} <: PotentialFlowSolution
     ψ::TU
     f̃::TF
     ψ₀::Vector{T}

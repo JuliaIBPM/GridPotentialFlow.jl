@@ -1,3 +1,5 @@
+export SuctionParameter, SuctionParameterRange
+
 const SuctionParameter = Float64
 
 struct SuctionParameterRange

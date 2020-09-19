@@ -1,5 +1,7 @@
 import SparseArrays: spzeros
 
+export BodyUnitVector
+
 const BodyUnitVector = ScalarData
 
 function BodyUnitVector(Nk::Integer,k::Integer,closuretype::Type{<:RigidBodyTools.BodyClosureType};midpoints::Bool=false)

@@ -2,6 +2,8 @@ import LinearAlgebra: I, \, ldiv!
 import SparseArrays: AbstractSparseMatrix, SparseMatrixCSC, sparse
 import Statistics: mean
 
+export UnregularizedPotentialFlowSystem, RegularizedPotentialFlowSystem, PotentialFlowSystem, setd_kvec!
+
 abstract type PotentialFlowSystem end
 
 struct UnregularizedPotentialFlowSystem{Nb,T,TU,TF} <: PotentialFlowSystem

@@ -1,3 +1,5 @@
+export Vortex, updateposition!
+
 """
     Vortex
 

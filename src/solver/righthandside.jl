@@ -1,3 +1,5 @@
+export PotentialFlowRHS
+
 struct UnregularizedPotentialFlowRHS{TU,TF}
     w::TU
     ψb::TF
