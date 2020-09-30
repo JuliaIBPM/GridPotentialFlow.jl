@@ -184,9 +184,9 @@ end
 function (\)(sys::RegularizedPotentialFlowSystem{Nb,Nk,T,TU,TF,TE}, rhs::RegularizedPotentialFlowRHS{TU,TF,TSP}) where {Nb,Nk,T,TU,TF,TE,TSP}
     if isempty(sys.d_kvec)
         println("d_kvec not set in system. Providing steady regularized solution.")
-        sol = SteadyRegularizedPotentialFlowSolution(TU(),TF(),_TF_zeros(T,Nb))
+        sol = SteadyRegularizedPotentialFlowSolution(TU(),TF(),zeros(T,Nb))
     else
-        sol = UnsteadyRegularizedPotentialFlowSolution(TU(),TF(),_TF_zeros(T,Nb),_TF_zeros(T,Nk))
+        sol = UnsteadyRegularizedPotentialFlowSolution(TU(),TF(),zeros(T,Nb),zeros(T,Nk))
     end
     ldiv!(sol,sys,rhs)
     return sol
