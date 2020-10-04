@@ -14,8 +14,10 @@ mutable struct VortexModel{Nb,Ne,TU,TF}
     _bodydata::TF
     _w::TU
     _ψb::TF
-    _Rmat::Union{Nothing,RegularizationMatrix{TU}}
-    _Emat::Union{Nothing,InterpolationMatrix{TU}}
+    _Rvmat::Union{Nothing,RegularizationMatrix{TU}}
+    _Evmat::Union{Nothing,InterpolationMatrix{TU}}
+    _Rbmat::RegularizationMatrix{TU}
+    _Ebmat::InterpolationMatrix{TU}
 end
 
 function VortexModel(g::PhysicalGrid; bodies::Union{Body,Vector{<:Body},BodyList}=BodyList(),  vortices::Union{Vortex,Vector{<:Vortex},VortexList}=VortexList(), edges::Vector{<:Integer}=Int[])
@@ -36,9 +38,9 @@ function VortexModel(g::PhysicalGrid; bodies::Union{Body,Vector{<:Body},BodyList
     # Create basic unregularized saddle point system S
     L = plan_laplacian(size(_nodedata),with_inverse=true)
     regop = Regularize(VectorData(collect(bodies)), cellsize(g), I0=origin(g), issymmetric=true, ddftype=CartesianGrids.Yang3)
-    Rmat,_ = RegularizationMatrix(regop,_bodydata,_nodedata)
-    Emat = InterpolationMatrix(regop,_nodedata,_bodydata)
-    S = SaddleSystem(L,Emat,Rmat,SaddleVector(_nodedata,_bodydata))
+    _Rbmat,_ = RegularizationMatrix(regop,_bodydata,_nodedata)
+    _Ebmat = InterpolationMatrix(regop,_nodedata,_bodydata)
+    S = SaddleSystem(L,_Ebmat,_Rbmat,SaddleVector(_nodedata,_bodydata))
 
     if isempty(edges) # Unregularized potential flow system with bodies
         system = PotentialFlowSystem(S)
@@ -48,9 +50,9 @@ function VortexModel(g::PhysicalGrid; bodies::Union{Body,Vector{<:Body},BodyList
         f₀ = constraint(S\SaddleVector(_nodedata,_bodydata));
 
         Df₀ = Diagonal(f₀);
-        R̃mat = deepcopy(Rmat);
-        R̃mat.M .= R̃mat.M*Df₀;
-        S̃ = SaddleSystem(L,Emat,R̃mat,SaddleVector(_nodedata,_bodydata))
+        R̃bmat = deepcopy(_Rbmat);
+        R̃bmat.M .= R̃bmat.M*Df₀;
+        S̃ = SaddleSystem(L,_Ebmat,R̃bmat,SaddleVector(_nodedata,_bodydata))
 
         e_kvec = [BodyUnitVector(bodies[1],k) for k in edges]
         d_kvec = typeof(_nodedata)[]
@@ -58,7 +60,7 @@ function VortexModel(g::PhysicalGrid; bodies::Union{Body,Vector{<:Body},BodyList
         system = PotentialFlowSystem(S̃,f₀,e_kvec,d_kvec)
     end
 
-    vortexmodel =  VortexModel{length(bodies),length(edges),typeof(_nodedata),typeof(_bodydata)}(g, VortexList(), bodies, edges, system, _nodedata, _bodydata, _w, _ψb, nothing, nothing)
+    vortexmodel =  VortexModel{length(bodies),length(edges),typeof(_nodedata),typeof(_bodydata)}(g, VortexList(), bodies, edges, system, _nodedata, _bodydata, _w, _ψb, nothing, nothing, _Rbmat, _Ebmat)
 
     setvortices!(vortexmodel, vortices)
 
@@ -165,7 +167,7 @@ Returns the flow velocity associated with the discrete vector potential field `�
 """
 function computevortexvelocities(vortexmodel::VortexModel{Nb,Ne,TU,TF},ψ::TU) where {Nb,Ne,TU,TF}
 
-    @unpack g, vortices, _Emat = vortexmodel
+    @unpack g, vortices, _Evmat = vortexmodel
 
     Ẋ_vortices = VectorData(length(vortices));
     qnodes = TU(); # TODO: Change to _nodedata to avoid allocating memory in this function
@@ -174,11 +176,11 @@ function computevortexvelocities(vortexmodel::VortexModel{Nb,Ne,TU,TF},ψ::TU) w
     # The discrete curl operator requires dividing by the cellsize to account for the grid spacing
     qedges = curl(ψ)/cellsize(g) # TODO: create _edgesdata to avoid allocating memory in this function
 
-    # For consistent interpolation, first interpolate the velocity to the nodes and use _Emat to interpolate from the nodes to the vortices
+    # For consistent interpolation, first interpolate the velocity to the nodes and use _Evmat to interpolate from the nodes to the vortices
     grid_interpolate!(qnodes,qedges.u);
-    Ẋ_vortices.u .= _Emat*qnodes
+    Ẋ_vortices.u .= _Evmat*qnodes
     grid_interpolate!(qnodes,qedges.v);
-    Ẋ_vortices.v .= _Emat*qnodes
+    Ẋ_vortices.v .= _Evmat*qnodes
 
     return Ẋ_vortices
 end
@@ -196,7 +198,7 @@ function updatevorticesregularization(vortexmodel::VortexModel{Nb,Ne,TU,TF}) whe
 
     @unpack g, vortices, _nodedata, system = vortexmodel
 
-    vortexmodel._Rmat, vortexmodel._Emat = computeregularizationmatrix(vortexmodel.g,getpositions(vortices),getstrengths(vortices),vortexmodel._nodedata)
+    vortexmodel._Rvmat, vortexmodel._Evmat = computeregularizationmatrix(vortexmodel.g,getpositions(vortices),getstrengths(vortices),vortexmodel._nodedata)
 
     if isregularized(vortexmodel) && !isempty(vortices)
         d_kvec = computed_kvec(vortexmodel,collect(length(vortices)-(Ne-1):length(vortices)))
@@ -210,14 +212,14 @@ function computed_kvec(vortexmodel::VortexModel{Nb,Ne,TU,TF},indices::Vector{Int
     for k in indices
         Γ .= 0
         Γ[k] = 1
-        push!(d_kvec,vortexmodel._Rmat*Γ)
+        push!(d_kvec,vortexmodel._Rvmat*Γ)
     end
     return d_kvec
 end
 
 function computew(vortexmodel::VortexModel{Nb,Ne,TU,TF})::TU where {Nb,Ne,TU,TF}
 
-    @unpack g, vortices, _Rmat = vortexmodel
+    @unpack g, vortices, _Rvmat = vortexmodel
 
     w = TU()
     computew!(w,vortexmodel)
@@ -232,7 +234,7 @@ Computes the vorticity field `w` associated with the vortices stored in `vortexm
 """
 function computew!(wphysical::TU,vortexmodel::VortexModel{Nb,Ne,TU,TF})::TU where {Nb,Ne,TU,TF}
 
-    @unpack g, vortices, _Rmat = vortexmodel
+    @unpack g, vortices, _Rvmat = vortexmodel
 
     if isempty(vortices)
         wphysical .= 0.0
@@ -240,7 +242,7 @@ function computew!(wphysical::TU,vortexmodel::VortexModel{Nb,Ne,TU,TF})::TU wher
     end
 
     Γ = getstrengths(vortices)
-    wphysical .= _Rmat*Γ/cellsize(g)^2 # Divide by the Δx² to ensure that ∫wdA = ΣΓ
+    wphysical .= _Rvmat*Γ/cellsize(g)^2 # Divide by the Δx² to ensure that ∫wdA = ΣΓ
 
     return wphysical
 end
@@ -266,6 +268,10 @@ function solvesystem!(sol::PotentialFlowSolution, vortexmodel::VortexModel{Nb,Ne
 
     # Because the discrete operators work in index space, we follow the convention in the paper and scale the physical vorticity field wphysical (the approximation to the continuous vorticity field) such that discrete vorticity field _w is is approximately the continuous vorticitymultiplied by ∆x.
     _w .= wphysical*cellsize(g)
+    #TODO: figure out scaling for Γb
+    if !isnothing(Γb)
+        Γb /= cellsize(g)
+    end
 
     # The discrete streamfunction field is constrained to a prescribed streamfunction on the body that describes the body motion. The body presence in the uniform flow is taken into account by subtracting its value from the body motion (i.e. a body motion in the -U∞ direction) and adding the uniform flow at the end of this routine.
     _ψb .= (Ub[1]-U∞[1])*(collect(bodies)[2]) .- (Ub[2]-U∞[2])*(collect(bodies)[1]);
