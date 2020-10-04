@@ -19,14 +19,13 @@ UnPack = "3a884ed6-31ef-47d7-9d2a-63182c4928ed"
 CartesianGrids = "0.1"
 ConstrainedSystems = "0.1"
 Reexport = "0.2"
-RigidBodyTools = "0.1"
 UnPack = "1.0"
 julia = "1"
 
 [extras]
+PotentialFlow = "73af2aaf-3f58-5b29-82a9-435ecf827f5b"
 Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
-PotentialFlow = "73af2aaf-3f58-5b29-82a9-435ecf827f5b"
 
 [targets]
-test = ["Test", "Random","PotentialFlow"]
+test = ["Test", "Random", "PotentialFlow"]
