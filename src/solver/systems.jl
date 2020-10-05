@@ -6,15 +6,15 @@ export UnregularizedPotentialFlowSystem, RegularizedPotentialFlowSystem, Potenti
 
 abstract type PotentialFlowSystem end
 
-struct UnregularizedPotentialFlowSystem{Nb,T,TU,TF} <: PotentialFlowSystem
+struct UnregularizedPotentialFlowSystem{Nb,T,TU,TF,TFB} <: PotentialFlowSystem
     S::SaddleSystem
     _TU_zeros::TU
-    _TF_ones::TF
+    _TFB_ones::TFB
 
-    function UnregularizedPotentialFlowSystem(S::SaddleSystem{T,Ns,Nc,TU,TF},_TF_ones) where {T,Ns,Nc,TU,TF}
+    function UnregularizedPotentialFlowSystem(S::SaddleSystem{T,Ns,Nc,TU,TF},_TF_ones::TFB) where {T,Ns,Nc,TU,TF,TFB}
         _TU_zeros = TU()
         _TU_zeros .= 0
-        new{size(_TF_ones,2),T,TU,TF}(S, _TU_zeros, _TF_ones)
+        new{size(_TF_ones,2),T,TU,TF,TFB}(S, _TU_zeros, _TF_ones)
     end
 end
 
@@ -86,7 +86,7 @@ end
 
 function ldiv!(sol::UnregularizedPotentialFlowSolution{T,TU,TF}, sys::UnregularizedPotentialFlowSystem{Nb,T,TU,TF}, rhs::UnregularizedPotentialFlowRHS{TU,TF}) where {Nb,T,TU,TF,TE}
 
-    @unpack S, _TF_ones, _TU_zeros = sys
+    @unpack S, _TFB_ones, _TU_zeros = sys
     @unpack ψ, f, ψ₀ = sol
     @unpack w, ψb, Γb = rhs
 
@@ -94,10 +94,10 @@ function ldiv!(sol::UnregularizedPotentialFlowSolution{T,TU,TF}, sys::Unregulari
     ψ .= state(temp_sol_1)
     f .= constraint(temp_sol_1)
 
-    S₀ = Matrix(_TF_ones'*(S.S⁻¹*_TF_ones))
-    ψ₀ = -S₀\(Γb-_TF_ones'*f)
+    S₀ = Matrix(_TFB_ones'*(S.S⁻¹*_TFB_ones))
+    ψ₀ = -S₀\(Γb-_TFB_ones'*f)
 
-    temp_sol_2 = S\SaddleVector(_TU_zeros,_TF_ones*ψ₀)
+    temp_sol_2 = S\SaddleVector(_TU_zeros,_TFB_ones*ψ₀)
 
     f .= f .- constraint(temp_sol_2)
     ψ .= reshape(-S.A⁻¹*(reshape(w,:) + S.B₁ᵀ*f),size(w))
