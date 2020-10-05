@@ -29,6 +29,9 @@ function VortexModel(g::PhysicalGrid; bodies::Union{Body,Vector{<:Body},BodyList
         bodies = BodyList(bodies)
     end
 
+    Nb = length(bodies)
+    Ne = length(edges)
+
     # Initialize data structures for internal use
     _nodedata = Nodes(Dual,size(g))
     _bodydata = ScalarData(length(collect(bodies)[1]))
@@ -43,7 +46,11 @@ function VortexModel(g::PhysicalGrid; bodies::Union{Body,Vector{<:Body},BodyList
     S = SaddleSystem(L,_Ebmat,_Rbmat,SaddleVector(_nodedata,_bodydata))
 
     if isempty(edges) # Unregularized potential flow system with bodies
-        system = PotentialFlowSystem(S)
+        _TF_ones = zeros(length(collect(bodies)[1]),Nb)
+        for i in 1:Nb
+            _TF_ones[getrange(bodies,i),i] .= 1;
+        end
+        system = PotentialFlowSystem(S,_TF_ones)
     else # Regularized potential flow system
         _nodedata .= 0
         _bodydata .= 1
@@ -60,7 +67,7 @@ function VortexModel(g::PhysicalGrid; bodies::Union{Body,Vector{<:Body},BodyList
         system = PotentialFlowSystem(S̃,f₀,e_kvec,d_kvec)
     end
 
-    vortexmodel =  VortexModel{length(bodies),length(edges),typeof(_nodedata),typeof(_bodydata)}(g, VortexList(), bodies, edges, system, _nodedata, _bodydata, _w, _ψb, nothing, nothing, _Rbmat, _Ebmat)
+    vortexmodel =  VortexModel{Nb,Ne,typeof(_nodedata),typeof(_bodydata)}(g, VortexList(), bodies, edges, system, _nodedata, _bodydata, _w, _ψb, nothing, nothing, _Rbmat, _Ebmat)
 
     setvortices!(vortexmodel, vortices)
 
@@ -262,24 +269,38 @@ A uniform flow can be specified with the optional tuple U∞.
 
 σ
 """
-function solvesystem!(sol::PotentialFlowSolution, vortexmodel::VortexModel{Nb,Ne,TU,TF}, wphysical::TU; Ub=(0.0,0.0), U∞=(0.0,0.0), Γb=nothing, σ=SuctionParameter.(zeros(Ne))) where {Nb,Ne,TU,TF}
+function solvesystem!(sol::PotentialFlowSolution, vortexmodel::VortexModel{Nb,Ne,TU,TF}, wphysical::TU; Ub::Union{Tuple{Float64,Float64},Array{Tuple{Float64,Float64}}}=fill((0.0,0.0),Nb), U∞=(0.0,0.0), Γb=nothing, σ=SuctionParameter.(zeros(Ne))) where {Nb,Ne,TU,TF}
 
     @unpack g, vortices, bodies, edges, system, _nodedata, _bodydata, _w, _ψb = vortexmodel
 
-    # Because the discrete operators work in index space, we follow the convention in the paper and scale the physical vorticity field wphysical (the approximation to the continuous vorticity field) such that discrete vorticity field _w is is approximately the continuous vorticitymultiplied by ∆x.
-    _w .= wphysical*cellsize(g)
-    #TODO: figure out scaling for Γb
-    if !isnothing(Γb)
-        Γb /= cellsize(g)
+    # Assure that Ub is an array
+    if Ub isa Tuple
+        Ub = [Ub]
     end
 
+    # Because the discrete operators work in index space, we follow the convention in the paper and scale the physical vorticity field wphysical (the approximation to the continuous vorticity field) such that discrete vorticity field _w is is approximately the continuous vorticitymultiplied by ∆x.
+    _w .= wphysical*cellsize(g)
+
     # The discrete streamfunction field is constrained to a prescribed streamfunction on the body that describes the body motion. The body presence in the uniform flow is taken into account by subtracting its value from the body motion (i.e. a body motion in the -U∞ direction) and adding the uniform flow at the end of this routine.
-    _ψb .= (Ub[1]-U∞[1])*(collect(bodies)[2]) .- (Ub[2]-U∞[2])*(collect(bodies)[1]);
+    _ψb .= -U∞[1]*(collect(bodies)[2]) .+ U∞[2]*(collect(bodies)[1]);
+    for i in 1:Nb
+        _ψb[getrange(bodies,i)] .+= Ub[i][1]*(collect(bodies[i])[2]) .- Ub[i][2]*(collect(bodies[i])[1]);
+    end
     # Similarly to above, the discrete streamfunction field ψ is approximately equal to the continuous streamfunction divided by ∆x. We therefore divide its constraint by ∆x.
     _ψb ./= cellsize(g)
 
     if !isregularized(vortexmodel)
-        rhs = PotentialFlowRHS(_w,_ψb,Γb)
+        #TODO: figure out scaling for Γb
+        if !isnothing(Γb)
+            Γb /= cellsize(g)
+        elseif Nb > 1 && isnothing(Γb)
+            Γb = zeros(Nb)
+            # println("Circulation about bodies not specified, using Γb = $(Γb)")
+        elseif Nb == 1 && isnothing(Γb)
+            Γb = -sum(_w)
+            # println("Circulation about body not specified, using Γb = -sum(w)")
+        end
+        rhs = PotentialFlowRHS(_w,_ψb,Γ=Γb)
     else
         rhs = PotentialFlowRHS(_w,_ψb,σ)
     end
