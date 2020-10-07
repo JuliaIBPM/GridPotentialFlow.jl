@@ -291,20 +291,26 @@ function solvesystem!(sol::PotentialFlowSolution, vortexmodel::VortexModel{Nb,Ne
 
     if !isregularized(vortexmodel)
         #TODO: figure out scaling for Γb
-        if !isnothing(Γb)
-            Γb ./= cellsize(g)
-        elseif Nb > 1 && isnothing(Γb)
+        if isnothing(Γb) && Nb == 1
+            Γb = -sum(_w)*cellsize(g)
+            # println("Circulation about body not specified, using Γb = -sum(w)")
+        elseif isnothing(Γb) && Nb == 1
             Γb = zeros(Nb)
             # println("Circulation about bodies not specified, using Γb = $(Γb)")
-        elseif Nb == 1 && isnothing(Γb)
-            Γb = -sum(_w)
-            # println("Circulation about body not specified, using Γb = -sum(w)")
+        end
+        if Nb > 0
+            Γb /= cellsize(g)
         end
         rhs = PotentialFlowRHS(_w,_ψb,Γ=Γb)
-    else
+    elseif issteady(vortexmodel)
         # Use same scaling for σ as for f
         σ ./= cellsize(g)
         rhs = PotentialFlowRHS(_w,_ψb,σ)
+    else
+        # Use same scaling for σ as for f
+        σ ./= cellsize(g)
+        Γw = sum(_w)*cellsize(g)
+        rhs = PotentialFlowRHS(_w,_ψb,σ,Γw)
     end
 
     ldiv!(sol,system,rhs)

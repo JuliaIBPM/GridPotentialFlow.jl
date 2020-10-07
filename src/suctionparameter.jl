@@ -25,7 +25,7 @@ function (*)(p::SuctionParameterRange,c::Number)
   return SuctionParameterRange(c*p.min,c*p.max)
 end
 
-(*)(c::Number,p::T) = *(p,c)
+(*)(c::Number,p::SuctionParameterRange) = *(p,c)
 
 function (/)(p::SuctionParameterRange,c::Number)
   return SuctionParameterRange(p.min/c, p.max/c)

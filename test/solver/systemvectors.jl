@@ -1,36 +1,28 @@
 using CartesianGrids
 using Statistics: mean
 
-Δx = 0.01
-xlim = (-3,3)
-ylim = (-3,3)
-g = PhysicalGrid(xlim,ylim,Δx)
 
-w = Nodes(Dual,size(g))
+w = Nodes(Dual,(20,20))
 ψ = Nodes(Dual,w);
-L = plan_laplacian(size(w),with_inverse=true)
 
-xg,yg = coordinates(w,g);
+w .= rand(20,20)
+ψ .= rand(20,20)
 
 c = 1.0
 body = Plate(c,35)
 
-# Find the minimum arc length
-Δs = minimum(dlength(body))
-
-# Move the airfoil
-xc = 0.0; yc = 0.0
-α = π/6
-T = RigidTransform((xc,yc),-α)
-T(body)
-
 X = VectorData(midpoints(body)[1][1:end],midpoints(body)[2][1:end])
 N = length(X.u)
 f = ScalarData(X);
+f .= rand(N)
 f̃ = ScalarData(X);
+f̃ .= rand(N)
 f₀ = ScalarData(X);
+f₀ .= rand(N)
 ψb = ScalarData(X);
-ψ₀ = [0.0];
+ψb .= rand(N)
+ψ₀ = rand(1,1);
+Γw = randn(Float64)
 
 @testset "BodyUnitVector" begin
     constantvector = ScalarData(N)
@@ -80,6 +72,14 @@ end
     @test rhs.w == w
     @test rhs.ψb == ψb
     @test rhs.f̃lim_kvec == f̃lim_kvec
+
+    f̃lim_kvec = [SuctionParameterRange(randn(Float64),randn(Float64))]
+    @test f̃lim_kvec[1].min ≤ f̃lim_kvec[1].max
+    rhs = PotentialFlowRHS(w,ψb,f̃lim_kvec,Γw)
+    @test rhs.w == w
+    @test rhs.ψb == ψb
+    @test rhs.f̃lim_kvec == f̃lim_kvec
+    @test rhs.Γw == Γw
 end
 @testset "PotentialFlowSolution" begin
     ψ₀ = rand(1)

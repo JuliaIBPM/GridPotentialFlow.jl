@@ -43,5 +43,5 @@ end
 
 @testset "Unsteady regularized flow around a body" begin
     model = VortexModel(g,vortices=[v3,v4],bodies=plate,edges=[1,length(plate)]);
-    ψ = computeψ(model,U∞=(1.0,0.0),σ=[(0,0),(0,0)]);
+    ψ = computeψ(model,U∞=(1.0,0.0),σ=[SuctionParameterRange(0.0,0.0),SuctionParameterRange(0.0,0.0)]);
 end

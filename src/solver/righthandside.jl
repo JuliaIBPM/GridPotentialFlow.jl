@@ -6,10 +6,17 @@ struct UnregularizedPotentialFlowRHS{TU,TF}
     Γb::Vector{Float64}
 end
 
-struct RegularizedPotentialFlowRHS{TU,TF,TSP<:Union{SuctionParameter,SuctionParameterRange}}
+struct SteadyRegularizedPotentialFlowRHS{TU,TF,TSP<:Union{SuctionParameter,SuctionParameterRange}}
     w::TU
     ψb::TF
     f̃lim_kvec::Vector{TSP}
+end
+
+struct UnsteadyRegularizedPotentialFlowRHS{TU,TF,TSP<:Union{SuctionParameter,SuctionParameterRange}}
+    w::TU
+    ψb::TF
+    f̃lim_kvec::Vector{TSP}
+    Γw::Float64
 end
 
 function PotentialFlowRHS(w::AbstractMatrix,ψb::AbstractVector;Γ::Union{Nothing,Real,Vector{<:Real}}=nothing)
@@ -20,17 +27,9 @@ function PotentialFlowRHS(w::AbstractMatrix,ψb::AbstractVector;Γ::Union{Nothin
 end
 
 function PotentialFlowRHS(w::AbstractMatrix,ψb::AbstractVector,f̃lim_kvec::Vector{TSP}) where {TSP<:Union{SuctionParameter,SuctionParameterRange}}
-    return RegularizedPotentialFlowRHS(w,ψb,f̃lim_kvec)
+    return SteadyRegularizedPotentialFlowRHS(w,ψb,f̃lim_kvec)
 end
 
-function PotentialFlowRHS(w::AbstractMatrix,ψb::AbstractVector,f̃lim_kvec::Tuple{Vector,Vector})
-    return RegularizedPotentialFlowRHS(w,ψb,SuctionParameterRange.(f̃lim_kvec[1],f̃lim_kvec[2]))
-end
-
-function PotentialFlowRHS(w::AbstractMatrix,ψb::AbstractVector,f̃lim_kvec::Vector{<:Tuple{<:Real,<:Real}})
-    return RegularizedPotentialFlowRHS(w,ψb,[SuctionParameterRange(f̃lim[1],f̃lim[2]) for f̃lim in f̃lim_kvec])
-end
-
-function PotentialFlowRHS(w::AbstractMatrix,ψb::AbstractVector,f̃lim1_kvec::Vector,f̃lim2_kvec::Vector)
-    return RegularizedPotentialFlowRHS(w,ψb,SuctionParameterRange.(f̃lim1_kvec,f̃lim2_kvec))
+function PotentialFlowRHS(w::AbstractMatrix,ψb::AbstractVector,f̃lim_kvec::Vector{TSP},Γw::Real) where {TSP<:Union{SuctionParameter,SuctionParameterRange}}
+    return UnsteadyRegularizedPotentialFlowRHS(w,ψb,f̃lim_kvec,Γw)
 end

@@ -105,11 +105,13 @@ function ldiv!(sol::UnregularizedPotentialFlowSolution{T,TU,TF}, sys::Unregulari
     return sol
 end
 
-function ldiv!(sol::SteadyRegularizedPotentialFlowSolution{T,TU,TF}, sys::RegularizedPotentialFlowSystem{Nb,Nk,T,TU,TF,TE}, rhs::RegularizedPotentialFlowRHS{TU,TF,TSP}) where {Nb,Nk,T,TU,TF,TE,TSP}
+function ldiv!(sol::SteadyRegularizedPotentialFlowSolution{T,TU,TF}, sys::RegularizedPotentialFlowSystem{Nb,Nk,T,TU,TF,TE}, rhs::SteadyRegularizedPotentialFlowRHS{TU,TF,TSP}) where {Nb,Nk,T,TU,TF,TE,TSP}
 
     @unpack S̃, f₀, e_kvec, P_kvec, _TF_zeros, _TF_ones = sys
     @unpack ψ, f̃, ψ₀ = sol
     @unpack w, ψb, f̃lim_kvec = rhs
+
+    println(f̃lim_kvec)
 
     # TODO: IMPLEMENT MULTIPLE BODIES
 
@@ -123,11 +125,13 @@ function ldiv!(sol::SteadyRegularizedPotentialFlowSolution{T,TU,TF}, sys::Regula
     return sol
 end
 
-function ldiv!(sol::UnsteadyRegularizedPotentialFlowSolution{T,TU,TF}, sys::RegularizedPotentialFlowSystem{Nb,Nk,T,TU,TF,TE}, rhs::RegularizedPotentialFlowRHS{TU,TF,TSP}) where {Nb,Nk,T,TU,TF,TE,TSP}
+function ldiv!(sol::UnsteadyRegularizedPotentialFlowSolution{T,TU,TF}, sys::RegularizedPotentialFlowSystem{Nb,Nk,T,TU,TF,TE}, rhs::UnsteadyRegularizedPotentialFlowRHS{TU,TF,TSP}) where {Nb,Nk,T,TU,TF,TE,TSP}
 
     @unpack S̃, f₀, e_kvec, d_kvec, f̃_kvec, P_kvec, _TF_zeros, _TF_ones, _w_buf = sys
     @unpack ψ, f̃, ψ₀, δΓ_kvec = sol
-    @unpack w, ψb, f̃lim_kvec = rhs
+    @unpack w, ψb, f̃lim_kvec, Γw = rhs
+
+    println(f̃lim_kvec)
 
     # TODO: IMPLEMENT MULTIPLE BODIES
     @assert length(d_kvec) == Nk
@@ -157,7 +161,7 @@ function ldiv!(sol::UnsteadyRegularizedPotentialFlowSolution{T,TU,TF}, sys::Regu
     #     δΓ_kvec .= _computevortexstrengths(Nk, k_sheddingedges::Vector{Integer}, P_kvec, f̃_kvec, f̃lim_kvec, f₀, w)
     # end
 
-    δΓ_kvec .= _computevortexstrengths(Nk, k_sheddingedges, P_kvec, f̃_kvec, activef̃lim_kvec, f̃, f₀, w)
+    δΓ_kvec .= _computevortexstrengths(Nk, k_sheddingedges, P_kvec, f̃_kvec, activef̃lim_kvec, f̃, f₀, Γw)
 
     # Add the vorticity of the shedded vortices to the vorticity field and use this to compute the steady regularized solution
     _w_buf .= w .+ sum(δΓ_kvec.*d_kvec)
@@ -177,13 +181,14 @@ function (\)(sys::UnregularizedPotentialFlowSystem, rhs::UnregularizedPotentialF
     return sol
 end
 
-function (\)(sys::RegularizedPotentialFlowSystem{Nb,Nk,T,TU,TF,TE}, rhs::RegularizedPotentialFlowRHS{TU,TF,TSP}) where {Nb,Nk,T,TU,TF,TE,TSP}
-    if isempty(sys.d_kvec)
-        println("d_kvec not set in system. Providing steady regularized solution.")
-        sol = SteadyRegularizedPotentialFlowSolution(TU(),TF(),zeros(T,Nb))
-    else
-        sol = UnsteadyRegularizedPotentialFlowSolution(TU(),TF(),zeros(T,Nb),zeros(T,Nk))
-    end
+function (\)(sys::RegularizedPotentialFlowSystem{Nb,Nk,T,TU,TF,TE}, rhs::SteadyRegularizedPotentialFlowRHS{TU,TF,TSP}) where {Nb,Nk,T,TU,TF,TE,TSP}
+    sol = SteadyRegularizedPotentialFlowSolution(TU(),TF(),zeros(T,Nb))
+    ldiv!(sol,sys,rhs)
+    return sol
+end
+
+function (\)(sys::RegularizedPotentialFlowSystem{Nb,Nk,T,TU,TF,TE}, rhs::UnsteadyRegularizedPotentialFlowRHS{TU,TF,TSP}) where {Nb,Nk,T,TU,TF,TE,TSP}
+    sol = UnsteadyRegularizedPotentialFlowSolution(TU(),TF(),zeros(T,Nb),zeros(T,Nk))
     ldiv!(sol,sys,rhs)
     return sol
 end
@@ -241,12 +246,11 @@ end
 #
 # end
 
-function _computevortexstrengths(Nk, k_sheddingedges::Vector{<:Integer}, P_kvec, f̃_kvec, f̃lim_kvec, f̃, f₀, w)
+function _computevortexstrengths(Nk, k_sheddingedges::Vector{<:Integer}, P_kvec, f̃_kvec, f̃lim_kvec, f̃, f₀, Γw)
 
-    δΓsys = zeros(eltype(w),Nk,Nk)
-    δΓrhs = zeros(eltype(w),Nk)
+    δΓsys = zeros(Float64,Nk,Nk)
+    δΓrhs = zeros(Float64,Nk)
     Γ₀ = sum(f₀)
-    Γw = sum(w)
 
     for k in 1:Nk
         if k in k_sheddingedges

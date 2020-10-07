@@ -105,7 +105,7 @@ S̃ = SaddleSystem(L,Emat,R̃mat,SaddleVector(w,ψb))
     #################################
 
     P_kvec = GridPotentialFlow._computesparsekuttaoperator.([e1,e2])
-    δΓ_kvec = GridPotentialFlow._computevortexstrengths(Nk, Integer[], P_kvec, [f₀,f₀], [0.0,0.0], f₀, f₀, w)
+    δΓ_kvec = GridPotentialFlow._computevortexstrengths(Nk, Integer[], P_kvec, [f₀,f₀], [0.0,0.0], f₀, f₀, cellsize(g)*sum(w))
 
     @test δΓ_kvec == [0.0, 0.0]
 
@@ -142,7 +142,8 @@ end
     regularizedsys = PotentialFlowSystem(S̃,f₀,[e1,e2],[d1,d2]);
     regularizedsol = PotentialFlowSolution(ψ,f,[0.0],[0.0,0.0])
     ψb .= -U∞*(X.v .- body.cent[2]);
-    regularizedrhs = PotentialFlowRHS(w,ψb,([0.0,0.0],[0.0,0.0]))
+    Γw = sum(w)
+    regularizedrhs = PotentialFlowRHS(w,ψb,[SuctionParameterRange(0.0,0.0),SuctionParameterRange(0.0,0.0)],Γw)
     GridPotentialFlow.ldiv!(regularizedsol,regularizedsys,regularizedrhs)
 
     include("flatplatevalidation.jl")
