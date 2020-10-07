@@ -143,7 +143,7 @@ function computevortexvelocities(vortexmodel::VortexModel{Nb,Ne,TU,TF}; kwargs..
     sol = solvesystem!(vortexmodel._nodedata, vortexmodel._bodydata, vortexmodel, vortexmodel._w; kwargs...)
 
     for k in 1:Ne
-        vortexmodel.vortices[end-Ne+k].Γ = sol.δΓ_kvec[k]*cellsize(vortexmodel.g)
+        vortexmodel.vortices[end-Ne+k].Γ = sol.δΓ_kvec[k]
     end
 
     Ẋ_vortices = computevortexvelocities(vortexmodel,sol.ψ)
@@ -322,6 +322,10 @@ function solvesystem!(sol::PotentialFlowSolution, vortexmodel::VortexModel{Nb,Ne
         sol.f .*= cellsize(g)
     else
         sol.f̃ .*= cellsize(g)
+    end
+
+    if !issteady(vortexmodel)
+        sol.δΓ_kvec .*= cellsize(vortexmodel.g)
     end
 
     # Add the uniform flow to the approximation to the continuous stream function field
