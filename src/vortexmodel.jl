@@ -278,7 +278,7 @@ function solvesystem!(sol::PotentialFlowSolution, vortexmodel::VortexModel{Nb,Ne
         Ub = [Ub]
     end
 
-    # Because the discrete operators work in index space, we follow the convention in the paper and scale the physical vorticity field wphysical (the approximation to the continuous vorticity field) such that discrete vorticity field _w is is approximately the continuous vorticitymultiplied by ∆x.
+    # Because the discrete operators work in index space, we follow the convention in the paper and scale the physical vorticity field wphysical (the approximation to the continuous vorticity field) such that discrete vorticity field _w is is approximately the continuous vorticity multiplied by ∆x.
     _w .= wphysical*cellsize(g)
 
     # The discrete streamfunction field is constrained to a prescribed streamfunction on the body that describes the body motion. The body presence in the uniform flow is taken into account by subtracting its value from the body motion (i.e. a body motion in the -U∞ direction) and adding the uniform flow at the end of this routine.
@@ -292,7 +292,7 @@ function solvesystem!(sol::PotentialFlowSolution, vortexmodel::VortexModel{Nb,Ne
     if !isregularized(vortexmodel)
         #TODO: figure out scaling for Γb
         if !isnothing(Γb)
-            Γb /= cellsize(g)
+            Γb ./= cellsize(g)
         elseif Nb > 1 && isnothing(Γb)
             Γb = zeros(Nb)
             # println("Circulation about bodies not specified, using Γb = $(Γb)")
@@ -302,6 +302,8 @@ function solvesystem!(sol::PotentialFlowSolution, vortexmodel::VortexModel{Nb,Ne
         end
         rhs = PotentialFlowRHS(_w,_ψb,Γ=Γb)
     else
+        # Use same scaling for σ as for f
+        σ ./= cellsize(g)
         rhs = PotentialFlowRHS(_w,_ψb,σ)
     end
 

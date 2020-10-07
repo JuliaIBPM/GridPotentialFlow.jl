@@ -1,3 +1,5 @@
+import Base: *, /
+
 export SuctionParameter, SuctionParameterRange
 
 const SuctionParameter = Float64
@@ -16,4 +18,15 @@ struct SuctionParameterRange
         end
         new(min,max)
     end
+end
+
+# Multiply and divide by a constant
+function (*)(p::SuctionParameterRange,c::Number)
+  return SuctionParameterRange(c*p.min,c*p.max)
+end
+
+(*)(c::Number,p::T) = *(p,c)
+
+function (/)(p::SuctionParameterRange,c::Number)
+  return SuctionParameterRange(p.min/c, p.max/c)
 end
