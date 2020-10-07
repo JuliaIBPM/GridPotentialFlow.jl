@@ -111,8 +111,6 @@ function ldiv!(sol::SteadyRegularizedPotentialFlowSolution{T,TU,TF}, sys::Regula
     @unpack ψ, f̃, ψ₀ = sol
     @unpack w, ψb, f̃lim_kvec = rhs
 
-    println(f̃lim_kvec)
-
     # TODO: IMPLEMENT MULTIPLE BODIES
 
     @assert size(f̃lim_kvec) == size(e_kvec)
@@ -130,8 +128,6 @@ function ldiv!(sol::UnsteadyRegularizedPotentialFlowSolution{T,TU,TF}, sys::Regu
     @unpack S̃, f₀, e_kvec, d_kvec, f̃_kvec, P_kvec, _TF_zeros, _TF_ones, _w_buf = sys
     @unpack ψ, f̃, ψ₀, δΓ_kvec = sol
     @unpack w, ψb, f̃lim_kvec, Γw = rhs
-
-    println(f̃lim_kvec)
 
     # TODO: IMPLEMENT MULTIPLE BODIES
     @assert length(d_kvec) == Nk

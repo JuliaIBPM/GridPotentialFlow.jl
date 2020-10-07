@@ -304,13 +304,13 @@ function solvesystem!(sol::PotentialFlowSolution, vortexmodel::VortexModel{Nb,Ne
         rhs = PotentialFlowRHS(_w,_ψb,Γ=Γb)
     elseif issteady(vortexmodel)
         # Use same scaling for σ as for f
-        σ ./= cellsize(g)
-        rhs = PotentialFlowRHS(_w,_ψb,σ)
+        SP = deepcopy(σ)./cellsize(g)
+        rhs = PotentialFlowRHS(_w,_ψb,SP)
     else
         # Use same scaling for σ as for f
-        σ ./= cellsize(g)
+        SP = deepcopy(σ)./cellsize(g)
         Γw = sum(_w)*cellsize(g)
-        rhs = PotentialFlowRHS(_w,_ψb,σ,Γw)
+        rhs = PotentialFlowRHS(_w,_ψb,SP,Γw)
     end
 
     ldiv!(sol,system,rhs)
