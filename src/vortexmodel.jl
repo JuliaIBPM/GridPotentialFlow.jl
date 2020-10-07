@@ -324,7 +324,7 @@ function solvesystem!(sol::PotentialFlowSolution, vortexmodel::VortexModel{Nb,Ne
         sol.f̃ .*= cellsize(g)
     end
 
-    if !issteady(vortexmodel)
+    if !issteady(vortexmodel) && isregularized(vortexmodel)
         sol.δΓ_kvec .*= cellsize(vortexmodel.g)
     end
 
