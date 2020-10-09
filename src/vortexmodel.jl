@@ -387,16 +387,22 @@ function computeimpulse(vortexmodel::VortexModel{Nb,Ne,TU,TF}, w::TU, f::TF; Ub=
     Δx = cellsize(g)
 
     # Formula 6.16
-    volumeintegral_x = Δx^2*sum(w.*yg)
+    volumeintegral_x = Δx^2*sum(w.*yg')
     volumeintegral_y = Δx^2*sum(-w.*xg)
     if !isempty(bodies)
         ncrossUb = -(normalmid(bodies[1])[1]*Ub[2] - normalmid(bodies[1])[2]*Ub[1])
         surfaceintegral_x = _surfaceintegrate(bodies[1],(f./dlength(bodies[1]) + ncrossUb).*(bodies[1].y))
         surfaceintegral_y = _surfaceintegrate(bodies[1],-(f./dlength(bodies[1]) + ncrossUb).*(bodies[1].x))
+
+        volume = _calculatevolume(bodies[1])
+    else
+        surfaceintegral_x = 0.0
+        surfaceintegral_y = 0.0
+        volume = 0.0
     end
 
-    P_x = volumeintegral_x + surfaceintegral_x - _calculatevolume(bodies[1])*U∞[1]
-    P_y = volumeintegral_y + surfaceintegral_y - _calculatevolume(bodies[1])*U∞[2]
+    P_x = volumeintegral_x + surfaceintegral_x - volume*U∞[1]
+    P_y = volumeintegral_y + surfaceintegral_y - volume*U∞[2]
 
     return P_x, P_y
 end
@@ -406,6 +412,8 @@ function computeimpulse(vortexmodel::VortexModel{Nb,Ne,TU,TF}; kwargs...) where 
     computew!(vortexmodel._w,vortexmodel)
     solvesystem!(vortexmodel._nodedata, vortexmodel._bodydata, vortexmodel, vortexmodel._w; kwargs...)
 
+    # We have to recalculate vortexmodel._w because it gets modified in solvesystem
+    computew!(vortexmodel._w,vortexmodel)
     P_x, P_y = computeimpulse(vortexmodel, vortexmodel._w, vortexmodel._bodydata; kwargs...)
 
     return P_x, P_y
