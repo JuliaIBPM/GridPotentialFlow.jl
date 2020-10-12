@@ -18,6 +18,7 @@ UnPack = "3a884ed6-31ef-47d7-9d2a-63182c4928ed"
 [compat]
 CartesianGrids = "0.1"
 ConstrainedSystems = "0.1"
+RecursiveArrayTools = "2.7"
 Reexport = "0.2"
 UnPack = "1.0"
 julia = "1"
