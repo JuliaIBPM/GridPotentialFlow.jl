@@ -1,7 +1,7 @@
 import CartesianGrids: curl!, Laplacian
 import LinearAlgebra: Diagonal
 
-export VortexModel, computeψ, computew, computevortexvelocities, computeregularizationmatrix, getstrengths, getpositions, setvortexpositions!, getvortexpositions, setvortices!, pushvortices!, computeimpulse, solvesystem
+export VortexModel, computeψ, computew, computew!, computevortexvelocities, computeregularizationmatrix, getstrengths, getpositions, setvortexpositions!, getvortexpositions, setvortices!, pushvortices!, computeimpulse, solvesystem, solvesystem!
 
 mutable struct VortexModel{Nb,Ne,TU,TF}
     g::PhysicalGrid
@@ -120,87 +120,6 @@ function getvortexpositions(vortexmodel::VortexModel{Nb,Ne,TU,TF}) where {Nb,Ne,
     return getpositions(vortexmodel.vortices)
 end
 
-function step!(vortexmodel::VortexModel{Nb,Ne,TU,TF}) where {Nb,Ne,TU,TF} end
-
-function computevortexvelocities(vortexmodel::VortexModel{Nb,Ne,TU,TF},X_vortices::VectorData{Nv}; kwargs...) where {Nb,Ne,TU,TF,Nv}
-
-    @assert Nv == length(vortexmodel.vortices)
-
-    setvortexpositions!(vortexmodel,X_vortices)
-    Ẋ_vortices = computevortexvelocities(vortexmodel; kwargs...)
-
-    return Ẋ_vortices
-end
-
-function computevortexvelocities(vortexmodel::VortexModel{Nb,Ne,TU,TF}; kwargs...) where {Nb,Ne,TU,TF}
-
-    # The strengths of the Ne last vortices will be calculated in solvesystem and should be set to zero before computing the vorticity field such that they are not included in w
-    for k in 1:Ne
-        vortexmodel.vortices[end-Ne+k].Γ = 0.0
-    end
-
-    computew!(vortexmodel._w,vortexmodel)
-    sol = solvesystem!(vortexmodel._nodedata, vortexmodel._bodydata, vortexmodel, vortexmodel._w; kwargs...)
-
-    for k in 1:Ne
-        vortexmodel.vortices[end-Ne+k].Γ = sol.δΓ_kvec[k]
-    end
-
-    Ẋ_vortices = computevortexvelocities(vortexmodel,sol.ψ)
-
-    return Ẋ_vortices
-end
-
-# function computevortexvelocities(vortexmodel::VortexModel{Nb,Ne,TU,TF},ψ::TU,Emat) where {Nb,Ne,TU,TF}
-#
-#     @unpack g, vortices = vortexmodel
-#
-#     q = NodePair(Dual,Dual,size(g))
-#     curl!(q,ψ)
-#
-#     Ẋ = VectorData(length(collect(vortices)[1]));
-#
-#     Ẋ.u .= Emat*q.u
-#     Ẋ.v .= Emat*q.v
-#
-#     return Ẋ
-#
-# end
-
-"""
-    computevortexvelocities(vortexmodel::VortexModel,ψ::Nodes)
-
-Returns the flow velocity associated with the discrete vector potential field `ψ` at the locations of the vortices stored in `vortexmodel` in the form of `VectorData`.
-"""
-function computevortexvelocities(vortexmodel::VortexModel{Nb,Ne,TU,TF},ψ::TU) where {Nb,Ne,TU,TF}
-
-    @unpack g, vortices, _Evmat = vortexmodel
-
-    Ẋ_vortices = VectorData(length(vortices));
-    qnodes = TU(); # TODO: Change to _nodedata to avoid allocating memory in this function
-
-    # Velocity is the curl of the vector potential
-    # The discrete curl operator requires dividing by the cellsize to account for the grid spacing
-    qedges = curl(ψ)/cellsize(g) # TODO: create _edgesdata to avoid allocating memory in this function
-
-    # For consistent interpolation, first interpolate the velocity to the nodes and use _Evmat to interpolate from the nodes to the vortices
-    grid_interpolate!(qnodes,qedges.u);
-    Ẋ_vortices.u .= _Evmat*qnodes
-    grid_interpolate!(qnodes,qedges.v);
-    Ẋ_vortices.v .= _Evmat*qnodes
-
-    return Ẋ_vortices
-end
-
-function computeregularizationmatrix(g::PhysicalGrid,X::VectorData{N},f::ScalarData{N},s::Nodes) where {N}
-
-    regop = Regularize(X, cellsize(g), I0=origin(g), ddftype=CartesianGrids.Yang3, issymmetric=true)
-    Rmat,_ = RegularizationMatrix(regop, f, s)
-    Emat = InterpolationMatrix(regop, s, f)
-
-    return Rmat, Emat
-end
-
 function updatevorticesregularization(vortexmodel::VortexModel{Nb,Ne,TU,TF}) where {Nb,Ne,TU,TF}
 
     @unpack g, vortices, _nodedata, system = vortexmodel
@@ -213,7 +132,16 @@ function updatevorticesregularization(vortexmodel::VortexModel{Nb,Ne,TU,TF}) whe
     end
 end
 
-function computed_kvec(vortexmodel::VortexModel{Nb,Ne,TU,TF},indices::Vector{Int}) where {Nb,Ne,TU,TF}
+function computeregularizationmatrix(g::PhysicalGrid, X::VectorData{N}, f::ScalarData{N}, s::Nodes) where {N}
+
+    regop = Regularize(X, cellsize(g), I0=origin(g), ddftype=CartesianGrids.Yang3, issymmetric=true)
+    Rmat,_ = RegularizationMatrix(regop, f, s)
+    Emat = InterpolationMatrix(regop, s, f)
+
+    return Rmat, Emat
+end
+
+function computed_kvec(vortexmodel::VortexModel{Nb,Ne,TU,TF}, indices::Vector{Int}) where {Nb,Ne,TU,TF}
     Γ = getstrengths(vortexmodel.vortices)
     d_kvec = TU[]
     for k in indices
@@ -224,14 +152,64 @@ function computed_kvec(vortexmodel::VortexModel{Nb,Ne,TU,TF},indices::Vector{Int
     return d_kvec
 end
 
-function computew(vortexmodel::VortexModel{Nb,Ne,TU,TF})::TU where {Nb,Ne,TU,TF}
+"""
+    computevortexvelocities(vortexmodel::VortexModel, ψ::TU)
 
-    @unpack g, vortices, _Rvmat = vortexmodel
+Returns the flow velocity as `VectorData` at the locations of the vortices stored in `vortexmodel` associated with the discrete vector potential field `ψ`.
+"""
+function computevortexvelocities(vortexmodel::VortexModel{Nb,Ne,TU,TF}, ψ::TU) where {Nb,Ne,TU,TF}
 
-    w = TU()
-    computew!(w,vortexmodel)
+    @unpack g, vortices, _nodedata, _bodydata, _Evmat = vortexmodel
 
-    return w
+    Ẋ_vortices = VectorData(length(vortices))
+    # Velocity is the curl of the vector potential
+    # The discrete curl operator requires dividing by the cellsize to account for the grid spacing
+    qedges = curl(ψ)/cellsize(g) # TODO: create _edgesdata to avoid allocating memory in this function
+
+    # For consistent interpolation, first interpolate the velocity to the nodes and use _Evmat to interpolate from the nodes to the vortices
+    grid_interpolate!(_nodedata,qedges.u);
+    Ẋ_vortices.u .= _Evmat*_nodedata
+    grid_interpolate!(_nodedata,qedges.v);
+    Ẋ_vortices.v .= _Evmat*_nodedata
+
+    return Ẋ_vortices
+end
+
+"""
+    computevortexvelocities(vortexmodel::VortexModel, w::TU; kwargs...)
+
+Returns the flow velocity as `VectorData` at the locations of the vortices stored in `vortexmodel` due to the vorticity field `w` and accounting for bodies in 'vortexmodel' and conditions in 'kwargs'.
+"""
+function computevortexvelocities(vortexmodel::VortexModel{Nb,Ne,TU,TF}; kwargs...) where {Nb,Ne,TU,TF}
+
+    @unpack g, vortices, _nodedata, _bodydata, _Evmat = vortexmodel
+
+    # The strengths of the Ne last vortices will be calculated in solvesystem and should be set to zero before computing the vorticity field such that they are not included in w
+    for k in 1:Ne
+        vortexmodel.vortices[end-Ne+k].Γ = 0.0
+    end
+
+    computew!(vortexmodel._w,vortexmodel)
+
+    sol = solvesystem!(_nodedata, _bodydata, vortexmodel, vortexmodel._w; kwargs...)
+
+    for k in 1:Ne
+        vortices[end-Ne+k].Γ = sol.δΓ_kvec[k]
+    end
+
+    Ẋ_vortices = computevortexvelocities(vortexmodel,sol.ψ)
+
+    return Ẋ_vortices
+end
+
+function computevortexvelocities(vortexmodel::VortexModel{Nb,Ne,TU,TF}, X_vortices::VectorData{Nv}; kwargs...) where {Nb,Ne,TU,TF,Nv}
+
+    @assert Nv == length(vortexmodel.vortices)
+
+    setvortexpositions!(vortexmodel,X_vortices)
+    Ẋ_vortices = computevortexvelocities(vortexmodel; kwargs...)
+
+    return Ẋ_vortices
 end
 
 """
@@ -239,7 +217,7 @@ end
 
 Computes the vorticity field `w` associated with the vortices stored in `vortexmodel` on the physical grid.
 """
-function computew!(wphysical::TU,vortexmodel::VortexModel{Nb,Ne,TU,TF})::TU where {Nb,Ne,TU,TF}
+function computew!(wphysical::TU, vortexmodel::VortexModel{Nb,Ne,TU,TF})::TU where {Nb,Ne,TU,TF}
 
     @unpack g, vortices, _Rvmat = vortexmodel
 
@@ -252,6 +230,16 @@ function computew!(wphysical::TU,vortexmodel::VortexModel{Nb,Ne,TU,TF})::TU wher
     wphysical .= _Rvmat*Γ/cellsize(g)^2 # Divide by the Δx² to ensure that ∫wdA = ΣΓ
 
     return wphysical
+end
+
+function computew(vortexmodel::VortexModel{Nb,Ne,TU,TF})::TU where {Nb,Ne,TU,TF}
+
+    @unpack g, vortices, _Rvmat = vortexmodel
+
+    w = TU()
+    computew!(w,vortexmodel)
+
+    return w
 end
 
 """
@@ -269,9 +257,9 @@ A uniform flow can be specified with the optional tuple U∞.
 
 σ
 """
-function solvesystem!(sol::PotentialFlowSolution, vortexmodel::VortexModel{Nb,Ne,TU,TF}, wphysical::TU; Ub::Union{Tuple{Float64,Float64},Array{Tuple{Float64,Float64}}}=fill((0.0,0.0),Nb), U∞=(0.0,0.0), Γb=nothing, σ=SuctionParameter.(zeros(Ne))) where {Nb,Ne,TU,TF}
+function solvesystem!(sol::PotentialFlowSolution, vortexmodel::VortexModel{Nb,Ne,TU,TF}, wphysical::TU; Ub::Union{Tuple{Float64,Float64},Array{Tuple{Float64,Float64}}}=fill((0.0,0.0), Nb), U∞=(0.0,0.0), Γb=nothing, σ=SuctionParameter.(zeros(Ne))) where {Nb,Ne,TU,TF}
 
-    @unpack g, vortices, bodies, edges, system, _nodedata, _bodydata, _w, _ψb = vortexmodel
+    @unpack g, vortices, bodies, edges, system, _nodedata, _w, _ψb = vortexmodel
 
     # Assure that Ub is an array
     if Ub isa Tuple
@@ -286,7 +274,7 @@ function solvesystem!(sol::PotentialFlowSolution, vortexmodel::VortexModel{Nb,Ne
     for i in 1:Nb
         _ψb[getrange(bodies,i)] .+= Ub[i][1]*(collect(bodies[i])[2]) .- Ub[i][2]*(collect(bodies[i])[1]);
     end
-    # Similarly to above, the discrete streamfunction field ψ is approximately equal to the continuous streamfunction divided by ∆x. We therefore divide its constraint by ∆x.
+    # Similarly as above, the discrete streamfunction field ψ is approximately equal to the continuous streamfunction divided by ∆x. We therefore divide its constraint by ∆x.
     _ψb ./= cellsize(g)
 
     if !isregularized(vortexmodel)
@@ -381,28 +369,42 @@ end
 
 function computeimpulse(vortexmodel::VortexModel{Nb,Ne,TU,TF}, w::TU, f::TF; Ub=(0.0,0.0), U∞=(0.0,0.0), kwargs...) where {Nb,Ne,TU,TF}
 
-    @unpack g, vortices, bodies = vortexmodel
+    @unpack g, vortices, bodies, _bodydata = vortexmodel
+
+    # Assure that Ub is an array
+    if Ub isa Tuple
+        Ub = [Ub]
+    end
 
     xg, yg = coordinates(w,g)
     Δx = cellsize(g)
 
-    # Formula 6.16
+    # Formula 61 (see formula 6.16 in book)
     volumeintegral_x = Δx^2*sum(w.*yg')
     volumeintegral_y = Δx^2*sum(-w.*xg)
-    if !isempty(bodies)
-        ncrossUb = -(normalmid(bodies[1])[1]*Ub[2] - normalmid(bodies[1])[2]*Ub[1])
-        surfaceintegral_x = _surfaceintegrate(bodies[1],(f./dlength(bodies[1]) + ncrossUb).*(bodies[1].y))
-        surfaceintegral_y = _surfaceintegrate(bodies[1],-(f./dlength(bodies[1]) + ncrossUb).*(bodies[1].x))
 
-        volume = _calculatevolume(bodies[1])
-    else
-        surfaceintegral_x = 0.0
-        surfaceintegral_y = 0.0
-        volume = 0.0
+    rx,ry = collect(bodies)
+    nx,ny = normalmid(bodies)
+    v = VectorData(_bodydata)
+
+    v.u .= -U∞[1] # Should I do this here or add volume*U∞ to P?
+    v.v .= -U∞[2]
+
+    for i in 1:Nb
+        v.u[getrange(bodies,i)] .+= Ub[i][1]
+        v.v[getrange(bodies,i)] .+= Ub[i][2]
     end
 
-    P_x = volumeintegral_x + surfaceintegral_x - volume*U∞[1]
-    P_y = volumeintegral_y + surfaceintegral_y - volume*U∞[2]
+    Δs = []
+    for i in 1:Nb
+        append!(Δs,dlengthmid(bodies[i]))
+    end
+
+    surfaceintegral_x = sum(ry.*(f./Δs - Diagonal(nx)*v.v + Diagonal(ny)*v.u).*Δs) # 2nd and 3rd term switched signs from paper because the normals are pointing in the wrong direction
+    surfaceintegral_y = -sum(rx.*(f./Δs - Diagonal(nx)*v.v + Diagonal(ny)*v.u).*Δs)
+
+    P_x = volumeintegral_x + surfaceintegral_x
+    P_y = volumeintegral_y + surfaceintegral_y
 
     return P_x, P_y
 end
@@ -419,6 +421,22 @@ function computeimpulse(vortexmodel::VortexModel{Nb,Ne,TU,TF}; kwargs...) where 
     return P_x, P_y
 end
 
+# function computevortexvelocities(vortexmodel::VortexModel{Nb,Ne,TU,TF},ψ::TU,Emat) where {Nb,Ne,TU,TF}
+#
+#     @unpack g, vortices = vortexmodel
+#
+#     q = NodePair(Dual,Dual,size(g))
+#     curl!(q,ψ)
+#
+#     Ẋ = VectorData(length(collect(vortices)[1]));
+#
+#     Ẋ.u .= Emat*q.u
+#     Ẋ.v .= Emat*q.v
+#
+#     return Ẋ
+#
+# end
+
 # function curl!(nodepair::NodePair{Dual, Dual, NX, NY},
 #                s::Nodes{Dual,NX, NY}) where {NX, NY}
 #
@@ -433,19 +451,3 @@ end
 #     #end
 #     nodepair
 # end
-
-# Only works for closed bodies for now
-function _surfaceintegrate(body::Body{N,C},integrand::Array{Float64,1}) where {N,C}
-    func = Array{Float64,1}(undef, N+1)
-    func[1:end-1] .= integrand
-    func[end] = integrand[1]
-    s = sum(dlength(body).*(func[1:end-1] + func[2:end]))/2
-    return s
-end
-
-function _calculatevolume(body::Body{N,RigidBodyTools.ClosedBody}) where {N}
-
-    ip1(i) = 1+mod(i,N)
-    V = sum([body.x[i]*body.y[ip1(i)] - body.y[i]*body.x[ip1(i)] for i = 1:N])/2
-    return V
-end
