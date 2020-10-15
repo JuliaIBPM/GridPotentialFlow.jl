@@ -20,6 +20,7 @@ CartesianGrids = "0.1"
 ConstrainedSystems = "0.1"
 RecursiveArrayTools = "2.7"
 Reexport = "0.2"
+RigidBodyTools = "0.1"
 UnPack = "1.0"
 julia = "1"
 
