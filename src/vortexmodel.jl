@@ -134,7 +134,7 @@ end
 
 function computeregularizationmatrix(g::PhysicalGrid, X::VectorData{N}, f::ScalarData{N}, s::Nodes) where {N}
 
-    regop = Regularize(X, cellsize(g), I0=origin(g), ddftype=CartesianGrids.Yang3, issymmetric=true)
+    regop = Regularize(X, cellsize(g), I0=origin(g), ddftype = CartesianGrids.M4prime, issymmetric=true)
     Rmat,_ = RegularizationMatrix(regop, f, s)
     Emat = InterpolationMatrix(regop, s, f)
 
@@ -274,7 +274,7 @@ function solvesystem!(sol::PotentialFlowSolution, vortexmodel::VortexModel{Nb,Ne
     for i in 1:Nb
         _ψb[getrange(bodies,i)] .+= Ub[i][1]*(collect(bodies[i])[2]) .- Ub[i][2]*(collect(bodies[i])[1]);
     end
-    # Similarly as above, the discrete streamfunction field ψ is approximately equal to the continuous streamfunction divided by ∆x. We therefore divide its constraint by ∆x.
+    # Similarly as above, the discrete streamfunction field ψ is approximately equal to the continuous streamfunction divided by ∆x. We therefore divide its continuous constraint by ∆x to get the discrete constraint.
     _ψb ./= cellsize(g)
 
     if !isregularized(vortexmodel)
@@ -297,7 +297,7 @@ function solvesystem!(sol::PotentialFlowSolution, vortexmodel::VortexModel{Nb,Ne
     else
         # Use same scaling for σ as for f
         SP = deepcopy(σ)./cellsize(g)
-        Γw = sum(_w)*cellsize(g)
+        Γw = sum(_w)#*cellsize(g)
         rhs = PotentialFlowRHS(_w,_ψb,SP,Γw)
     end
 
@@ -367,6 +367,7 @@ end
 #     return sol.ψ
 # end
 
+# frame of reference
 function computeimpulse(vortexmodel::VortexModel{Nb,Ne,TU,TF}, w::TU, f::TF; Ub=(0.0,0.0), U∞=(0.0,0.0), kwargs...) where {Nb,Ne,TU,TF}
 
     @unpack g, vortices, bodies, _bodydata = vortexmodel
@@ -387,8 +388,8 @@ function computeimpulse(vortexmodel::VortexModel{Nb,Ne,TU,TF}, w::TU, f::TF; Ub=
     nx,ny = normalmid(bodies)
     v = VectorData(_bodydata)
 
-    v.u .= -U∞[1] # Should I do this here or add volume*U∞ to P?
-    v.v .= -U∞[2]
+    v.u .= 0
+    v.v .= 0
 
     for i in 1:Nb
         v.u[getrange(bodies,i)] .+= Ub[i][1]
@@ -400,8 +401,8 @@ function computeimpulse(vortexmodel::VortexModel{Nb,Ne,TU,TF}, w::TU, f::TF; Ub=
         append!(Δs,dlengthmid(bodies[i]))
     end
 
-    surfaceintegral_x = sum(ry.*(f./Δs - Diagonal(nx)*v.v + Diagonal(ny)*v.u).*Δs) # 2nd and 3rd term switched signs from paper because the normals are pointing in the wrong direction
-    surfaceintegral_y = -sum(rx.*(f./Δs - Diagonal(nx)*v.v + Diagonal(ny)*v.u).*Δs)
+    surfaceintegral_x = sum(ry.*(f./Δs + Diagonal(nx)*v.v - Diagonal(ny)*v.u).*Δs) # 2nd and 3rd term switched signs from paper because the normals are pointing in the wrong direction
+    surfaceintegral_y = -sum(rx.*(f./Δs + Diagonal(nx)*v.v - Diagonal(ny)*v.u).*Δs)
 
     P_x = volumeintegral_x + surfaceintegral_x
     P_y = volumeintegral_y + surfaceintegral_y
