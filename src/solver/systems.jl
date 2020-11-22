@@ -9,7 +9,7 @@ abstract type PotentialFlowSystem end
 struct UnregularizedPotentialFlowSystem{Nb,T,TU,TF,TFB} <: PotentialFlowSystem
     S::SaddleSystem
     _TU_zeros::TU
-    _TFB_ones::TFB
+    _TFB_ones::TFB # Matrix with the i,j-th entry equal to one if i is an index of the PointData that belongs to the j-th body and zero otherwise.
 
     function UnregularizedPotentialFlowSystem(S::SaddleSystem{T,Ns,Nc,TU,TF},_TF_ones::TFB) where {T,Ns,Nc,TU,TF,TFB}
         _TU_zeros = TU()
