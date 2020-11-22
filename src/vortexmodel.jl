@@ -305,7 +305,8 @@ function solvesystem!(sol::PotentialFlowSolution, vortexmodel::VortexModel{Nb,Ne
 
     # The computed discrete streamfunction field ψ is approximately equal to the continuous streamfunction divided by ∆x. We now scale the discrete field back to the physical grid.
     sol.ψ .*= cellsize(g)
-    # Because Δψ + Rf = -w, f also has to be scaled back. The result is f = γ*Δs
+    # Because Δψ + Rf = -w, f also has to be scaled back. The result is f = γ*Δs or f̃ = γ̃
+    # TODO: need to change this such that it always return f and not f̃. Then we also have to change computeimpulse
     if !isregularized(vortexmodel)
         sol.f .*= cellsize(g)
     else
@@ -368,6 +369,8 @@ end
 # end
 
 # frame of reference
+# w and f are physical quantities
+# TODO: clean this up
 function computeimpulse(vortexmodel::VortexModel{Nb,Ne,TU,TF}, w::TU, f::TF; Ub=(0.0,0.0), U∞=(0.0,0.0), kwargs...) where {Nb,Ne,TU,TF}
 
     @unpack g, vortices, bodies, _bodydata = vortexmodel
@@ -380,12 +383,11 @@ function computeimpulse(vortexmodel::VortexModel{Nb,Ne,TU,TF}, w::TU, f::TF; Ub=
     xg, yg = coordinates(w,g)
     Δx = cellsize(g)
 
+    impulse = [0.0,0.0]
     # Formula 61 (see formula 6.16 in book)
-    volumeintegral_x = Δx^2*sum(w.*yg')
-    volumeintegral_y = Δx^2*sum(-w.*xg)
+    impulse = [Δx^2*sum(w.*yg'),Δx^2*sum(-w.*xg)]
+    # println(impulse)
 
-    rx,ry = collect(bodies)
-    nx,ny = normalmid(bodies)
     v = VectorData(_bodydata)
 
     v.u .= 0
@@ -396,16 +398,29 @@ function computeimpulse(vortexmodel::VortexModel{Nb,Ne,TU,TF}, w::TU, f::TF; Ub=
         v.v[getrange(bodies,i)] .+= Ub[i][2]
     end
 
-    Δs = []
     for i in 1:Nb
-        append!(Δs,dlengthmid(bodies[i]))
+        impulse += computeimpulsesurfaceintegral(bodies[i], f[getrange(bodies,i)], v.u[getrange(bodies,i)],v.v[getrange(bodies,i)])
     end
 
-    surfaceintegral_x = sum(ry.*(f./Δs + Diagonal(nx)*v.v - Diagonal(ny)*v.u).*Δs) # 2nd and 3rd term switched signs from paper because the normals are pointing in the wrong direction
-    surfaceintegral_y = -sum(rx.*(f./Δs + Diagonal(nx)*v.v - Diagonal(ny)*v.u).*Δs)
 
-    P_x = volumeintegral_x + surfaceintegral_x
-    P_y = volumeintegral_y + surfaceintegral_y
+
+    # surfaceintegral_x = ry'*((f./Δs + nx.*v.v - ny.*v.u).*Δs)
+    # surfaceintegral_y = -rx'*((f./Δs + nx.*v.v - ny.*v.u).*Δs)
+
+    # P_x = volumeintegral_x + surfaceintegral_x
+    # P_y = volumeintegral_y + surfaceintegral_y
+
+    return impulse[1], impulse[2]
+end
+
+function computeimpulse(vortexmodel::VortexModel{Nb,0,TU,TF}; kwargs...) where {Nb,TU,TF}
+
+    computew!(vortexmodel._w,vortexmodel)
+    solvesystem!(vortexmodel._nodedata, vortexmodel._bodydata, vortexmodel, vortexmodel._w; kwargs...)
+
+    # We have to recalculate vortexmodel._w because it gets modified in solvesystem
+    computew!(vortexmodel._w,vortexmodel)
+    P_x, P_y = computeimpulse(vortexmodel, vortexmodel._w, vortexmodel._bodydata; kwargs...)
 
     return P_x, P_y
 end
@@ -417,9 +432,25 @@ function computeimpulse(vortexmodel::VortexModel{Nb,Ne,TU,TF}; kwargs...) where 
 
     # We have to recalculate vortexmodel._w because it gets modified in solvesystem
     computew!(vortexmodel._w,vortexmodel)
+
+    # vortexmodel._bodydata is f̃, so we have to multiply by f₀
+    vortexmodel._bodydata .= vortexmodel._bodydata.*vortexmodel.system.f₀
+
     P_x, P_y = computeimpulse(vortexmodel, vortexmodel._w, vortexmodel._bodydata; kwargs...)
 
     return P_x, P_y
+end
+
+function computeimpulsesurfaceintegral(body::Body{N,RigidBodyTools.ClosedBody}, f, u, v) where {N}
+    rx,ry = collect(body)
+    nx,ny = normalmid(body)
+    Δs = dlengthmid(body)
+    return [ry'*((f./Δs + nx.*v - ny.*u).*Δs), -rx'*((f./Δs + nx.*v - ny.*u).*Δs)]
+end
+
+function computeimpulsesurfaceintegral(body::Body{N,RigidBodyTools.OpenBody}, f, u, v) where {N}
+    rx,ry = collect(body)
+    return [ry'*f, -rx'*f]
 end
 
 # function computevortexvelocities(vortexmodel::VortexModel{Nb,Ne,TU,TF},ψ::TU,Emat) where {Nb,Ne,TU,TF}
