@@ -33,7 +33,7 @@ end
 
 @testset "Unsteady flow without a body" begin
     model = VortexModel(g,vortices=[v1,v2])
-    ψ = computeψ(model,Ub=(0.0,0.0),U∞=(1.0,1.0));
+    ψ = computeψ(model,U∞=(1.0,1.0));
 end
 
 @testset "Unsteady unregularized flow around a body" begin
