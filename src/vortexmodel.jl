@@ -460,17 +460,10 @@ function computeaddedmassmatrix(vortexmodel::VortexModel{Nb,Ne,TU,TF}) where {Nb
                 Ub[movingbodyindex] = (0.0,1.0)
             end
             computebodypointsvelocity!(_bodyvectordata,Ub,bodies)
-            u = _bodyvectordata.u[getrange(bodies,movingbodyindex)]
-            v = _bodyvectordata.v[getrange(bodies,movingbodyindex)]
             solvesystem!(_nodedata, _bodydata, vortexmodel, _w; Ub=Ub)
-            for affectedbodyindex in 1:Nb
-                M[(affectedbodyindex-1)*2+1,(movingbodyindex-1)*2+dir] = computecrossproductsurfaceintegral(bodies[affectedbodyindex], _bodydata[getrange(bodies,affectedbodyindex)])[1]
-                M[(affectedbodyindex-1)*2+2,(movingbodyindex-1)*2+dir] = computecrossproductsurfaceintegral(bodies[affectedbodyindex], _bodydata[getrange(bodies,affectedbodyindex)])[2]
+            for i in 1:Nb
+                M[(i-1)*2+1:(i-1)*2+2,(movingbodyindex-1)*2+dir] .= computeimpulsesurfaceintegral(bodies[i], _bodydata[getrange(bodies,i)], _bodyvectordata.u[getrange(bodies,i)], _bodyvectordata.v[getrange(bodies,i)])
             end
-            nx,ny = normalmid(bodies[movingbodyindex])
-            Δs = dlengthmid(bodies[movingbodyindex])
-            M[(movingbodyindex-1)*2+1,(movingbodyindex-1)*2+dir] += computecrossproductsurfaceintegral(bodies[movingbodyindex], (nx.*v - ny.*u).*Δs)[1]
-            M[(movingbodyindex-1)*2+2,(movingbodyindex-1)*2+dir] += computecrossproductsurfaceintegral(bodies[movingbodyindex], (nx.*v - ny.*u).*Δs)[2]
         end
     end
     return M
