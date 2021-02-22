@@ -16,10 +16,9 @@ mutable struct VortexModel{Nb,Ne,TU,TF}
     _nodedata::TU
     _bodydata::TF
     _bodyvectordata::VectorData
+    _d_kvec::Vector{TU}
     _w::TU
     _ψb::TF
-    _Rvmat::Union{Nothing,RegularizationMatrix{TU}}
-    _Evmat::Union{Nothing,InterpolationMatrix{TU}}
     _Rbmat::RegularizationMatrix{TU}
     _Ebmat::InterpolationMatrix{TU}
 end
@@ -40,6 +39,7 @@ function VortexModel(g::PhysicalGrid; bodies::Union{Body,Vector{<:Body},BodyList
     _nodedata = Nodes(Dual,size(g))
     _bodydata = ScalarData(length(collect(bodies)[1]))
     _bodyvectordata = VectorData(length(collect(bodies)[1]))
+    _d_kvec = typeof(_nodedata)[]
     _w = Nodes(Dual,size(g))
     _ψb = ScalarData(length(collect(bodies)[1]))
 
@@ -59,6 +59,9 @@ function VortexModel(g::PhysicalGrid; bodies::Union{Body,Vector{<:Body},BodyList
     else # Regularized potential flow system
         _nodedata .= 0
         _bodydata .= 1
+
+        _d_kvec = [Nodes(Dual,size(g)) for i=1:Ne]
+
         f₀ = constraint(S\SaddleVector(_nodedata,_bodydata));
 
         Df₀ = Diagonal(f₀);
@@ -67,12 +70,11 @@ function VortexModel(g::PhysicalGrid; bodies::Union{Body,Vector{<:Body},BodyList
         S̃ = SaddleSystem(L,_Ebmat,R̃bmat,SaddleVector(_nodedata,_bodydata))
 
         e_kvec = [BodyUnitVector(bodies[1],k) for k in edges]
-        d_kvec = typeof(_nodedata)[]
 
-        system = PotentialFlowSystem(S̃,f₀,e_kvec,d_kvec)
+        system = PotentialFlowSystem(S̃,f₀,e_kvec,_d_kvec)
     end
 
-    vortexmodel =  VortexModel{Nb,Ne,typeof(_nodedata),typeof(_bodydata)}(g, VortexList(), bodies, edges, system, _nodedata, _bodydata, _bodyvectordata, _w, _ψb, nothing, nothing, _Rbmat, _Ebmat)
+    vortexmodel =  VortexModel{Nb,Ne,typeof(_nodedata),typeof(_bodydata)}(g, VortexList(), bodies, edges, system, _nodedata, _bodydata, _bodyvectordata, _d_kvec, _w, _ψb, _Rbmat, _Ebmat)
 
     setvortices!(vortexmodel, vortices)
 
@@ -95,46 +97,28 @@ function isregularized(vortexmodel::VortexModel{Nb,Ne}) where {Nb,Ne}
     end
 end
 
-function setvortices!(vortexmodel::VortexModel{Nb,Ne,TU,TF}, vortices::Union{Vortex,Vector{<:Vortex},VortexList}=VortexList(); computeregularization=true) where {Nb,Ne,TU,TF}
+function setvortices!(vortexmodel::VortexModel{Nb,Ne,TU,TF}, vortices::Union{Vortex,Vector{<:Vortex},VortexList}=VortexList()) where {Nb,Ne,TU,TF}
 
     vortices = VortexList(deepcopy(vortices))
 
     vortexmodel.vortices = vortices
-
-    if computeregularization updatevorticesregularization(vortexmodel) end
 end
 
-function pushvortices!(vortexmodel::VortexModel{Nb,Ne,TU,TF}, vortices...; computeregularization=true) where {Nb,Ne,TU,TF}
+function pushvortices!(vortexmodel::VortexModel{Nb,Ne,TU,TF}, vortices...) where {Nb,Ne,TU,TF}
 
     push!(vortexmodel.vortices.list,vortices...)
-
-    if computeregularization updatevorticesregularization(vortexmodel) end
 end
 
-function setvortexpositions!(vortexmodel::VortexModel{Nb,Ne,TU,TF}, X_vortices::VectorData{Nv}; computeregularization=true) where {Nb,Ne,TU,TF,Nv}
+function setvortexpositions!(vortexmodel::VortexModel{Nb,Ne,TU,TF}, X_vortices::VectorData{Nv}) where {Nb,Ne,TU,TF,Nv}
 
     @assert Nv == length(vortexmodel.vortices)
 
     setpositions!(vortexmodel.vortices,X_vortices.u,X_vortices.v)
-
-    if computeregularization updatevorticesregularization(vortexmodel) end
 end
 
 function getvortexpositions(vortexmodel::VortexModel{Nb,Ne,TU,TF}) where {Nb,Ne,TU,TF}
 
     return getpositions(vortexmodel.vortices)
-end
-
-function updatevorticesregularization(vortexmodel::VortexModel{Nb,Ne,TU,TF}) where {Nb,Ne,TU,TF}
-
-    @unpack g, vortices, _nodedata, system = vortexmodel
-
-    vortexmodel._Rvmat, vortexmodel._Evmat = computeregularizationmatrix(vortexmodel.g,getpositions(vortices),getstrengths(vortices),vortexmodel._nodedata)
-
-    if isregularized(vortexmodel) && !isempty(vortices)
-        d_kvec = computed_kvec(vortexmodel,collect(length(vortices)-(Ne-1):length(vortices)))
-        setd_kvec!(system, d_kvec)
-    end
 end
 
 function computeregularizationmatrix(g::PhysicalGrid, X::VectorData{N}, f::ScalarData{N}, s::Nodes) where {N}
@@ -146,15 +130,21 @@ function computeregularizationmatrix(g::PhysicalGrid, X::VectorData{N}, f::Scala
     return Rmat, Emat
 end
 
-function computed_kvec(vortexmodel::VortexModel{Nb,Ne,TU,TF}, indices::Vector{Int}) where {Nb,Ne,TU,TF}
-    Γ = getstrengths(vortexmodel.vortices)
-    d_kvec = TU[]
-    for k in indices
+function updatesystemd_kvec!(vortexmodel::VortexModel{Nb,Ne,TU,TF}, indices::Vector{Int}) where {Nb,Ne,TU,TF}
+
+    @unpack g, vortices, system, _nodedata, _d_kvec = vortexmodel
+
+    H = Regularize(getpositions(vortices), cellsize(g), I0=origin(g), ddftype=CartesianGrids.M4prime, issymmetric=true)
+
+    Γ = getstrengths(vortices)
+    for i in 1:Ne
         Γ .= 0
-        Γ[k] = 1
-        push!(d_kvec,vortexmodel._Rvmat*Γ)
+        Γ[indices[i]] = 1
+        H(_nodedata,Γ)
+        _d_kvec[i] .= _nodedata
     end
-    return d_kvec
+    setd_kvec!(system,_d_kvec)
+    return _d_kvec
 end
 
 """
@@ -164,7 +154,9 @@ Returns the flow velocity as `VectorData` at the locations of the vortices store
 """
 function computevortexvelocities(vortexmodel::VortexModel{Nb,Ne,TU,TF}, ψ::TU) where {Nb,Ne,TU,TF}
 
-    @unpack g, vortices, _nodedata, _bodydata, _Evmat = vortexmodel
+    @unpack g, vortices, _nodedata, _bodydata = vortexmodel
+
+    H = Regularize(getpositions(vortices), cellsize(g), I0=origin(g), ddftype=CartesianGrids.M4prime, issymmetric=true)
 
     Ẋ_vortices = VectorData(length(vortices))
     # Velocity is the curl of the vector potential
@@ -173,9 +165,9 @@ function computevortexvelocities(vortexmodel::VortexModel{Nb,Ne,TU,TF}, ψ::TU) 
 
     # For consistent interpolation, first interpolate the velocity to the nodes and use _Evmat to interpolate from the nodes to the vortices
     grid_interpolate!(_nodedata,qedges.u);
-    Ẋ_vortices.u .= _Evmat*_nodedata
+    H(Ẋ_vortices.u,_nodedata)
     grid_interpolate!(_nodedata,qedges.v);
-    Ẋ_vortices.v .= _Evmat*_nodedata
+    H(Ẋ_vortices.v,_nodedata)
 
     return Ẋ_vortices
 end
@@ -187,7 +179,7 @@ Returns the flow velocity as `VectorData` at the locations of the vortices store
 """
 function computevortexvelocities(vortexmodel::VortexModel{Nb,Ne,TU,TF}; kwargs...) where {Nb,Ne,TU,TF}
 
-    @unpack g, vortices, _nodedata, _bodydata, _Evmat = vortexmodel
+    @unpack g, vortices, _nodedata, _bodydata = vortexmodel
 
     # The strengths of the Ne last vortices will be calculated in solvesystem and should be set to zero before computing the vorticity field such that they are not included in w
     for k in 1:Ne
@@ -224,7 +216,9 @@ Computes the vorticity field `w` associated with the vortices stored in `vortexm
 """
 function computew!(wphysical::TU, vortexmodel::VortexModel{Nb,Ne,TU,TF})::TU where {Nb,Ne,TU,TF}
 
-    @unpack g, vortices, _Rvmat = vortexmodel
+    @unpack g, vortices = vortexmodel
+
+    H = Regularize(getpositions(vortices), cellsize(g), I0=origin(g), ddftype=CartesianGrids.M4prime, issymmetric=true)
 
     if isempty(vortices)
         wphysical .= 0.0
@@ -232,14 +226,15 @@ function computew!(wphysical::TU, vortexmodel::VortexModel{Nb,Ne,TU,TF})::TU whe
     end
 
     Γ = getstrengths(vortices)
-    wphysical .= _Rvmat*Γ/cellsize(g)^2 # Divide by the Δx² to ensure that ∫wdA = ΣΓ
+    H(wphysical,Γ)
+    wphysical ./= cellsize(g)^2 # Divide by the Δx² to ensure that ∫wdA = ΣΓ
 
     return wphysical
 end
 
 function computew(vortexmodel::VortexModel{Nb,Ne,TU,TF})::TU where {Nb,Ne,TU,TF}
 
-    @unpack g, vortices, _Rvmat = vortexmodel
+    @unpack g, vortices = vortexmodel
 
     w = TU()
     computew!(w,vortexmodel)
@@ -300,6 +295,8 @@ function solvesystem!(sol::PotentialFlowSolution, vortexmodel::VortexModel{Nb,Ne
         SP = deepcopy(σ)./cellsize(g)
         rhs = PotentialFlowRHS(_w,_ψb,SP)
     else
+        # Update the system.d_kvec to agree with the latest vortex positions
+        updatesystemd_kvec!(vortexmodel,collect(length(vortices)-(Ne-1):length(vortices)))
         # Use same scaling for σ as for f
         SP = deepcopy(σ)./cellsize(g)
         Γw = sum(_w)#*cellsize(g)

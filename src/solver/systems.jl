@@ -265,12 +265,13 @@ function _computevortexstrengths(Nk, k_sheddingedges::Vector{<:Integer}, P_kvec,
     return δΓ_kvec
 end
 
+# TODO: assign sys.d_kvec = d_kvec or remove d_kvec in vortexmodel altogether?
 function setd_kvec!(sys::RegularizedPotentialFlowSystem{Nb,Nk,T,TU,TF,TE}, d_kvec::Vector{TU}) where {Nb,Nk,T,TU,TF,TE}
 
     resize!(sys.d_kvec,length(d_kvec))
     resize!(sys.f̃_kvec,length(d_kvec))
     sys.d_kvec .= d_kvec
-    sys.f̃_kvec .= fill(TF(), length(d_kvec))
+    sys.f̃_kvec .= fill(TF(), length(d_kvec)) # is this line necessary?
 
 end
 
