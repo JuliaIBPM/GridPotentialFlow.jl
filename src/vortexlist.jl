@@ -7,6 +7,7 @@ import Base: @propagate_inbounds,getindex, setindex!,iterate,size,length,push!,
     VortexList
 
 """
+# TODO: consider using StructArray
 struct VortexList
     list::Vector{Vortex}
 end
@@ -26,7 +27,7 @@ size(A::VortexList) = size(A.list)
 length(A::VortexList) = length(A.list)
 lastindex(A::VortexList) = lastindex(A.list)
 
-push!(bl::VortexList,b::Vortex) = push!(bl.list,b)
+push!(vl::VortexList,v::Vortex) = push!(vl.list,v)
 
 function vcat(vl1::VortexList,vl2::VortexList)
     return VortexList(vcat(vl1.list,vl2.list))

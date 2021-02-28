@@ -23,25 +23,25 @@ v4 = Vortex(plate.x[end]+3e-2*plate.len*cos(plate.α+π/2),plate.y[end]+3e-2*pla
 
 @testset "Steady unregularized flow around a body" begin
     model = VortexModel(g,bodies=circle)
-    ψ = computeψ(model,Ub=(0.0,0.0),U∞=(1.0,0.0),Γb=0.0);
+    ψ = computeψ(model,parameters=ModelParameters(Ub=(0.0,0.0),U∞=(1.0,0.0),Γb=0.0));
 end
 
 @testset "Steady regularized flow around a body" begin
     model = VortexModel(g,bodies=plate,edges=[length(plate)])
-    ψ = computeψ(model,U∞=(1.0,0.0));
+    ψ = computeψ(model,parameters=ModelParameters(U∞=(1.0,0.0)));
 end
 
 @testset "Unsteady flow without a body" begin
     model = VortexModel(g,vortices=[v1,v2])
-    ψ = computeψ(model,U∞=(1.0,1.0));
+    ψ = computeψ(model,parameters=ModelParameters(U∞=(1.0,1.0)));
 end
 
 @testset "Unsteady unregularized flow around a body" begin
     model = VortexModel(g,vortices=[v1,v2],bodies=circle)
-    ψ = computeψ(model,U∞=(1.0,1.0));
+    ψ = computeψ(model,parameters=ModelParameters(U∞=(1.0,1.0)));
 end
 
 @testset "Unsteady regularized flow around a body" begin
     model = VortexModel(g,vortices=[v3,v4],bodies=plate,edges=[1,length(plate)]);
-    ψ = computeψ(model,U∞=(1.0,0.0),σ=[SuctionParameterRange(0.0,0.0),SuctionParameterRange(0.0,0.0)]);
+    ψ = computeψ(model,parameters=ModelParameters(U∞=(1.0,0.0),σ=[SuctionParameterRange(0.0,0.0),SuctionParameterRange(0.0,0.0)]));
 end

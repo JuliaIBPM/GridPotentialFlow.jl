@@ -4,6 +4,8 @@ import Statistics: mean
 
 export UnregularizedPotentialFlowSystem, RegularizedPotentialFlowSystem, PotentialFlowSystem, setd_kvec!
 
+# TODO: check if ldiv is faster than S\SaddleVector
+
 abstract type PotentialFlowSystem end
 
 struct UnregularizedPotentialFlowSystem{Nb,T,TU,TF,TFB} <: PotentialFlowSystem
