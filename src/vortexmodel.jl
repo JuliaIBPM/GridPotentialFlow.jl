@@ -3,7 +3,6 @@ import LinearAlgebra: Diagonal, norm
 
 export VortexModel, computeψ, computew, computew!, computevortexvelocities, computeregularizationmatrix, getstrengths, getpositions, setvortexpositions!, getvortexpositions, setvortices!, pushvortices!, computeimpulse, computeaddedmassmatrix, solvesystem, solvesystem!
 
-# TODO: replace grid scaling by functions (for sol and rhs types)
 # TODO: check if _computeψboundaryconditions needs to be faster
 # TODO: impulse case when U∞ is specified instead of Ub
 # TODO: create PotentialFlowBody type that encapsulates Ub, Γb, and any regularized edges
@@ -113,7 +112,7 @@ function getvortexpositions(vortexmodel::VortexModel{Nb,Ne}) where {Nb,Ne}
     return getpositions(vortexmodel.vortices)
 end
 
-function updatesystemd_kvec!(vortexmodel::VortexModel{Nb,Ne}, indices::Vector{Int}) where {Nb,Ne}
+function _updatesystemd_kvec!(vortexmodel::VortexModel{Nb,Ne}, indices::Vector{Int}) where {Nb,Ne}
 
     @unpack g, vortices, system, _nodedata, _d_kvec = vortexmodel
 
@@ -237,26 +236,19 @@ end
 function solvesystem!(sol::UnregularizedPotentialFlowSolution, vortexmodel::VortexModel{Nb,0}, wphysical::Nodes{Dual}; parameters=ModelParameters()) where {Nb}
 
     _computeψboundaryconditions!(vortexmodel._ψb, vortexmodel, parameters)
-    vortexmodel._ψb ./= cellsize(vortexmodel.g)
-    vortexmodel._w .= wphysical*cellsize(vortexmodel.g)
+    vortexmodel._w .= wphysical
+    Γb = deepcopy(parameters.Γb)
 
-    if isnothing(parameters.Γb) && Nb == 1 # Circulation about body not specified, using Γb = -sum(w)
-        Γb = -sum(vortexmodel._w)
-        # println("")
-    elseif isnothing(parameters.Γb) && Nb > 1 # Circulation about bodies not specified, using Γb = zeros(Nb)
+    if isnothing(Γb) && Nb == 1 # Circulation about body not specified, using Γb = -∫wdA
+        Γb = -sum(vortexmodel._w)*cellsize(vortexmodel.g)^2
+    elseif isnothing(Γb) && Nb > 1 # Circulation about bodies not specified, using Γb = zeros(Nb)
         Γb = zeros(Nb)
-        # println("")
-    elseif isnothing(parameters.Γb) && Nb == 0
-        Γb = nothing
-    elseif !isnothing(parameters.Γb) # Scale the provided Γb
-        Γb = deepcopy(parameters.Γb)./cellsize(vortexmodel.g)
     end
 
     rhs = PotentialFlowRHS(vortexmodel._w,vortexmodel._ψb,Γ=Γb)
+    _scaletoindexspace!(rhs,cellsize(vortexmodel.g))
     ldiv!(sol,vortexmodel.system,rhs)
-
-    sol.ψ .*= cellsize(vortexmodel.g) # The computed ψ is approximately equal to the continuous streamfunction divided by ∆x. We now scale the discrete field back to the physical grid.
-    sol.f .*= cellsize(vortexmodel.g) # Because Δψ + Rf = -w, f also has to be scaled back. The result is f = γ*Δs
+    _scaletophysicalspace!(sol,cellsize(vortexmodel.g))
 
     addψ∞!(sol.ψ,vortexmodel,parameters) # Add the uniform flow to the approximation to the continuous stream function field
 
@@ -266,16 +258,14 @@ end
 function solvesystem!(sol::SteadyRegularizedPotentialFlowSolution, vortexmodel::VortexModel{Nb,Ne,false}, wphysical::Nodes{Dual}; parameters=ModelParameters()) where {Nb,Ne}
 
     _computeψboundaryconditions!(vortexmodel._ψb, vortexmodel, parameters)
-    vortexmodel._ψb ./= cellsize(vortexmodel.g)
-    vortexmodel._w .= wphysical*cellsize(vortexmodel.g)
 
-    SP = isnothing(parameters.σ) ? SuctionParameter.(zeros(Ne)) : deepcopy(parameters.σ)./cellsize(vortexmodel.g)    # Use same scaling for σ as for f
+    vortexmodel._w .= wphysical
+    SP = isnothing(parameters.σ) ? SuctionParameter.(zeros(Ne)) : deepcopy(parameters.σ)
 
     rhs = PotentialFlowRHS(vortexmodel._w,vortexmodel._ψb,SP)
+    _scaletoindexspace!(rhs,cellsize(vortexmodel.g))
     ldiv!(sol,vortexmodel.system,rhs)
-
-    sol.ψ .*= cellsize(vortexmodel.g) # The computed ψ is approximately equal to the continuous streamfunction divided by ∆x. We now scale the discrete field back to the physical grid.
-    sol.f̃ .*= cellsize(vortexmodel.g) # Because Δψ + Rf = -w, f also has to be scaled back. The result is f̃ = γ̃
+    _scaletophysicalspace!(sol,cellsize(vortexmodel.g))
 
     addψ∞!(sol.ψ,vortexmodel,parameters) # Add the uniform flow to the approximation to the continuous stream function field
 
@@ -285,19 +275,16 @@ end
 function solvesystem!(sol::UnsteadyRegularizedPotentialFlowSolution, vortexmodel::VortexModel{Nb,Ne,true}, wphysical::Nodes{Dual}; parameters=ModelParameters()) where {Nb,Ne}
 
     _computeψboundaryconditions!(vortexmodel._ψb, vortexmodel, parameters)
-    vortexmodel._ψb ./= cellsize(vortexmodel.g)
-    vortexmodel._w .= wphysical*cellsize(vortexmodel.g)
+    _updatesystemd_kvec!(vortexmodel,collect(length(vortexmodel.vortices)-(Ne-1):length(vortexmodel.vortices))) # Update the system.d_kvec to agree with the latest vortex positions
 
-    updatesystemd_kvec!(vortexmodel,collect(length(vortexmodel.vortices)-(Ne-1):length(vortexmodel.vortices))) # Update the system.d_kvec to agree with the latest vortex positions
-    SP = isnothing(parameters.σ) ? SuctionParameter.(zeros(Ne)) : deepcopy(parameters.σ)./cellsize(vortexmodel.g)    # Use same scaling for σ as for f
-    Γw = sum(vortexmodel._w)
+    vortexmodel._w .= wphysical
+    SP = isnothing(parameters.σ) ? SuctionParameter.(zeros(Ne)) : deepcopy(parameters.σ)
+    Γw = sum(vortexmodel._w)*cellsize(vortexmodel.g)^2 # Γw = ∫wdA
 
     rhs = PotentialFlowRHS(vortexmodel._w,vortexmodel._ψb,SP,Γw)
+    _scaletoindexspace!(rhs,cellsize(vortexmodel.g))
     ldiv!(sol,vortexmodel.system,rhs)
-
-    sol.ψ .*= cellsize(vortexmodel.g) # The computed ψ is approximately equal to the continuous streamfunction divided by ∆x. We now scale the discrete field back to the physical grid.
-    sol.f̃ .*= cellsize(vortexmodel.g) # Because Δψ + Rf = -w, f also has to be scaled back. The result is f̃ = γ̃
-    sol.δΓ_kvec .*= cellsize(vortexmodel.g)
+    _scaletophysicalspace!(sol,cellsize(vortexmodel.g))
 
     addψ∞!(sol.ψ,vortexmodel,parameters) # Add the uniform flow to the approximation to the continuous stream function field
 

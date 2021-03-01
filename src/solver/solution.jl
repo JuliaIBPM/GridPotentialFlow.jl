@@ -32,3 +32,21 @@ end
 function PotentialFlowSolution(ψ::TU,f̃::TF,ψ₀::Vector{T},δΓ_kvec::Vector{T}) where {T,TU,TF}
     return UnsteadyRegularizedPotentialFlowSolution{T,TU,TF}(ψ,f̃,ψ₀,δΓ_kvec)
 end
+
+function _scaletophysicalspace!(sol::UnregularizedPotentialFlowSolution,Δx::Real)
+    sol.ψ .*= Δx # The computed ψ is approximately equal to the continuous streamfunction divided by ∆x.
+    sol.f .*= Δx # Because Δψ + Rf = -w, f also has to be scaled back. The result is f = γ*Δs
+    sol.ψ₀ .*= Δx
+end
+
+function _scaletophysicalspace!(sol::SteadyRegularizedPotentialFlowSolution,Δx::Real)
+    sol.ψ .*= Δx # The computed ψ is approximately equal to the continuous streamfunction divided by ∆x.
+    sol.f̃ .*= Δx # Because Δψ + Rf = -w, f also has to be scaled back. The result is f = γ*Δs
+    sol.ψ₀ .*= Δx
+end
+function _scaletophysicalspace!(sol::UnsteadyRegularizedPotentialFlowSolution,Δx::Real)
+    sol.ψ .*= Δx # The computed ψ is approximately equal to the continuous streamfunction divided by ∆x.
+    sol.f̃ .*= Δx # Because Δψ + Rf = -w, f also has to be scaled back. The result is f = γ*Δs
+    sol.ψ₀ .*= Δx
+    sol.δΓ_kvec .*= Δx
+end
