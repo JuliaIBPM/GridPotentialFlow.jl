@@ -8,7 +8,6 @@ export VortexModel, computeψ, computew, computew!, computevortexvelocities, com
 # TODO: create PotentialFlowBody type that encapsulates Ub, Γb, and any regularized edges
 # TODO: try to remove _d_kvec from VortexModel
 # TODO: check if TU is needed or not
-# TODO: make sol always contain f so we can remove the second computeimpulse function
 
 mutable struct VortexModel{Nb,Ne,isshedding,TU}
     g::PhysicalGrid
@@ -370,7 +369,7 @@ function computeimpulse(vortexmodel::VortexModel{Nb,Ne}, w::Nodes{Dual}, f::Scal
     return impulse[1], impulse[2]
 end
 
-function computeimpulse(vortexmodel::VortexModel{Nb,0}; parameters=ModelParameters()) where {Nb}
+function computeimpulse(vortexmodel::VortexModel; parameters=ModelParameters()) where {Nb}
 
     @unpack bodies, _nodedata, _bodydata, _bodyvectordata, _w = vortexmodel
 
@@ -382,24 +381,6 @@ function computeimpulse(vortexmodel::VortexModel{Nb,0}; parameters=ModelParamete
     _computebodypointsvelocity!(_bodyvectordata,parameters.Ub,bodies)
 
     P_x, P_y = computeimpulse(vortexmodel, _nodedata, sol.f, _bodyvectordata)
-
-    return P_x, P_y
-end
-
-function computeimpulse(vortexmodel::VortexModel{Nb,Ne}; parameters=ModelParameters()) where {Nb,Ne}
-
-    @unpack bodies, system, _nodedata, _bodydata, _bodyvectordata, _w = vortexmodel
-
-    computew!(_nodedata,vortexmodel)
-    sol = solvesystem(vortexmodel, _nodedata, parameters=parameters)
-
-    # vortexmodel._bodydata is f̃, so we have to multiply by f₀
-    sol.f̃ .= sol.f̃.*vortexmodel.system.f₀
-
-    # Convert Ub into VectorData corresponding with the body points
-    _computebodypointsvelocity!(_bodyvectordata,parameters.Ub,bodies)
-
-    P_x, P_y = computeimpulse(vortexmodel, _w, _bodydata, _bodyvectordata)
 
     return P_x, P_y
 end
