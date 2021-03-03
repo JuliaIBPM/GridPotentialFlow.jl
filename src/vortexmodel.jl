@@ -9,21 +9,21 @@ export VortexModel, computeψ, computew, computew!, computevortexvelocities, com
 # TODO: try to remove _d_kvec from VortexModel
 # TODO: check if TU is needed or not
 
-mutable struct VortexModel{Nb,Ne,isshedding,TU}
+mutable struct VortexModel{Nb,Ne,isshedding}
     g::PhysicalGrid
     bodies::BodyList
     vortices::VortexList
     edges::Vector{Int}
     system::PotentialFlowSystem
 
-    _nodedata::TU
+    _nodedata::Nodes{Dual}
     _edgedata::Edges{Primal}
     _bodydata::ScalarData
     _bodyvectordata::VectorData
-    _d_kvec::Vector{TU}
-    _ψ::TU
+    _d_kvec::Vector{Nodes{Dual}}
+    _ψ::Nodes{Dual}
     _f::ScalarData
-    _w::TU
+    _w::Nodes{Dual}
     _ψb::ScalarData
 end
 
@@ -82,7 +82,7 @@ function VortexModel(g::PhysicalGrid; bodies::Union{Body,Vector{<:Body},BodyList
         isshedding = false
     end
 
-    vortexmodel =  VortexModel{Nb,Ne,isshedding,typeof(_ψ)}(g, bodies, VortexList(deepcopy(vortices)), edges, system, _nodedata, _edgedata, _bodydata, _bodyvectordata, _d_kvec, _ψ, _f, _w, _ψb)
+    vortexmodel =  VortexModel{Nb,Ne,isshedding}(g, bodies, VortexList(deepcopy(vortices)), edges, system, _nodedata, _edgedata, _bodydata, _bodyvectordata, _d_kvec, _ψ, _f, _w, _ψb)
 
     return vortexmodel
 end
