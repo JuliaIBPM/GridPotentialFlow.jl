@@ -118,7 +118,7 @@ end
     regularizedrhs = PotentialFlowRHS(w,ψb,[0.0])
     GridPotentialFlow.ldiv!(regularizedsol,regularizedsys,regularizedrhs)
 
-    Γnumerical = sum(f₀.*regularizedsol.f̃)
+    Γnumerical = sum(regularizedsol.f)
     Γexact = -π*U∞*c*sin(α)
 
     @test isapprox(Γnumerical, Γexact; rtol = 1e-1)

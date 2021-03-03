@@ -9,7 +9,8 @@ using RecursiveArrayTools
 @reexport using ConstrainedSystems
 
 include("bodyunitvectors.jl")
-include("suctionparameter.jl")
+include("modelparameters.jl")
+include("utils.jl")
 
 include("solver/righthandside.jl")
 include("solver/solution.jl")

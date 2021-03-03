@@ -15,8 +15,6 @@ X = VectorData(midpoints(body)[1][1:end],midpoints(body)[2][1:end])
 N = length(X.u)
 f = ScalarData(X);
 f .= rand(N)
-f̃ = ScalarData(X);
-f̃ .= rand(N)
 f₀ = ScalarData(X);
 f₀ .= rand(N)
 ψb = ScalarData(X);
@@ -84,16 +82,16 @@ end
 @testset "PotentialFlowSolution" begin
     ψ₀ = rand(1)
     δΓ_kvec = rand(1)
-    sol = PotentialFlowSolution(ψ,f̃,ψ₀,δΓ_kvec)
+    sol = PotentialFlowSolution(ψ,f,ψ₀,δΓ_kvec)
     @test sol.ψ == ψ
-    @test sol.f̃ == f̃
+    @test sol.f == f
     @test sol.ψ₀ == ψ₀
     @test sol.δΓ_kvec == δΓ_kvec
-    sol = PotentialFlowSolution(ψ,f̃,ψ₀)
+    sol = PotentialFlowSolution(ψ,f,ψ₀)
     @test sol.ψ == ψ
-    @test sol.f̃ == f̃
+    @test sol.f == f
     @test sol.ψ₀ == ψ₀
-    sol = PotentialFlowSolution(ψ,f̃)
+    sol = PotentialFlowSolution(ψ,f)
     @test sol.ψ == ψ
-    @test sol.f == f̃
+    @test sol.f == f
 end
