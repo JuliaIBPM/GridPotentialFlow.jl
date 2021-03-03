@@ -7,7 +7,7 @@ export VortexModel, computeψ, computew, computew!, computevortexvelocities, com
 # TODO: impulse case when U∞ is specified instead of Ub
 # TODO: create PotentialFlowBody type that encapsulates Ub, Γb, and any regularized edges
 # TODO: try to remove _d_kvec from VortexModel
-# TODO: check if TU is needed or not
+# TODO: check memory allocation inverse laplacian in ConstrainedSystems
 
 mutable struct VortexModel{Nb,Ne,isshedding}
     g::PhysicalGrid
