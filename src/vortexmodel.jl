@@ -8,14 +8,37 @@ export VortexModel, computeψ, computew, computew!, computevortexvelocities, com
 # TODO: create PotentialFlowBody type that encapsulates Ub, Γb, and any regularized edges
 # TODO: try to remove _d_kvec from VortexModel
 # TODO: check memory allocation inverse laplacian in ConstrainedSystems
+# TODO: check if TU, TF should be used to enforce type compatibility in functions
+# TODO: rotational coefficients of added mass matrix
+# TODO: add examples
+# TODO: mention frame of reference for computeimpulse
 
+"""
+$(TYPEDEF)
+
+Defines a grid-based vortex model with `Nb` bodies and `Ne` edges that are regularized. If `isshedding` is `true`, the strengths of the last `Ne` vortices in `vortices` can be computed in order to regularized the `Ne` edges.
+
+# Fields
+
+$(TYPEDFIELDS)
+
+# Examples
+(under construction)
+"""
 mutable struct VortexModel{Nb,Ne,isshedding}
+    """g: The grid on which the vortex model is defined."""
     g::PhysicalGrid
+    """bodies: The bodies in the vortex model."""
     bodies::BodyList
+    """vortices: The point vortices in the vortex model."""
     vortices::VortexList
+    """edges: The vector of body points where shedding occurs."""
     edges::Vector{Int}
+    """system: The potential flow system that has to be solved with a `PotentialFlowRHS` and a `PotentialFlowSolution` to compute the potential flow that governs the vortex model.
+    """
     system::PotentialFlowSystem
 
+    """Internal fields"""
     _nodedata::Nodes{Dual}
     _edgedata::Edges{Primal}
     _bodydata::ScalarData
@@ -27,6 +50,11 @@ mutable struct VortexModel{Nb,Ne,isshedding}
     _ψb::ScalarData
 end
 
+"""
+$(TYPEDSIGNATURES)
+
+Construct a vortex model using the given function.
+"""
 function VortexModel(g::PhysicalGrid; bodies::Union{Body,Vector{<:Body},BodyList}=BodyList(), vortices::Union{Vortex,Vector{<:Vortex},VortexList}=VortexList(), edges::Vector{<:Integer}=Int[])
 
     # Ensure that bodies are of type BodyList
@@ -87,18 +115,33 @@ function VortexModel(g::PhysicalGrid; bodies::Union{Body,Vector{<:Body},BodyList
     return vortexmodel
 end
 
-function setvortices!(vortexmodel::VortexModel{Nb,Ne}, vortices::Union{Vortex,Vector{<:Vortex},VortexList}=VortexList()) where {Nb,Ne}
+"""
+$(SIGNATURES)
 
-    vortices = VortexList(deepcopy(vortices))
+Replaces the `vortices` field of `vortexmodel` by a copy of `newvortices`.
+"""
+function setvortices!(vortexmodel::VortexModel{Nb,Ne}, newvortices::Union{Vortex,Vector{<:Vortex},VortexList}=VortexList()) where {Nb,Ne}
+
+    vortices = VortexList(deepcopy(newvortices))
 
     vortexmodel.vortices = vortices
 end
 
-function pushvortices!(vortexmodel::VortexModel{Nb,Ne}, vortices...) where {Nb,Ne}
+"""
+$(SIGNATURES)
 
-    push!(vortexmodel.vortices.list,vortices...)
+Adds the `newvortices` to the existing vortices in `vortexmodel`.
+"""
+function pushvortices!(vortexmodel::VortexModel{Nb,Ne}, newvortices...) where {Nb,Ne}
+
+    push!(vortexmodel.vortices.list,newvortices...)
 end
 
+"""
+$(SIGNATURES)
+
+Sets the positions of the vortices in `vortexmodel` to the provided `X_vortices`.
+"""
 function setvortexpositions!(vortexmodel::VortexModel{Nb,Ne}, X_vortices::VectorData{Nv}) where {Nb,Ne,Nv}
 
     @assert Nv == length(vortexmodel.vortices)
@@ -106,6 +149,11 @@ function setvortexpositions!(vortexmodel::VortexModel{Nb,Ne}, X_vortices::Vector
     setpositions!(vortexmodel.vortices,X_vortices.u,X_vortices.v)
 end
 
+"""
+$(SIGNATURES)
+
+Returns the positions of the vortices in `vortexmodel`.
+"""
 function getvortexpositions(vortexmodel::VortexModel{Nb,Ne}) where {Nb,Ne}
 
     return getpositions(vortexmodel.vortices)
@@ -114,6 +162,8 @@ end
 function _updatesystemd_kvec!(vortexmodel::VortexModel{Nb,Ne}, indices::Vector{Int}) where {Nb,Ne}
 
     @unpack g, vortices, system, _nodedata, _d_kvec = vortexmodel
+
+    @assert length(vortices) >= Ne "not enough point vortices ($(length(vortices))) in vortexmodel to regularize $(Ne) edges"
 
     H = Regularize(getpositions(vortices), cellsize(g), I0=origin(g), ddftype=CartesianGrids.M4prime, issymmetric=true)
 
@@ -129,7 +179,7 @@ function _updatesystemd_kvec!(vortexmodel::VortexModel{Nb,Ne}, indices::Vector{I
 end
 
 """
-    computevortexvelocities(vortexmodel::VortexModel, ψ::Nodes{Dual})
+$(SIGNATURES)
 
 Returns the flow velocity as `VectorData` at the locations of the vortices stored in `vortexmodel` associated with the discrete vector potential field `ψ`.
 """
@@ -155,9 +205,9 @@ function computevortexvelocities(vortexmodel::VortexModel{Nb,Ne}, ψ::Nodes{Dual
 end
 
 """
-    computevortexvelocities(vortexmodel::VortexModel, w::Nodes{Dual}; kwargs...)
+$(SIGNATURES)
 
-Returns the flow velocity as `VectorData` at the locations of the vortices stored in `vortexmodel` due to the vorticity field `w` and accounting for bodies in 'vortexmodel' and conditions in 'kwargs'.
+Returns the flow velocity as `VectorData` at the locations of the vortices stored in `vortexmodel`, accounting for bodies in `vortexmodel` and conditions in `kwargs`. If the `vortexmodel` has `Ne` regularized edges and vortices, the strengths of the last `Ne` vortices will be computed and set in `vortexmodel`.
 """
 function computevortexvelocities(vortexmodel::VortexModel{Nb,Ne}; kwargs...) where {Nb,Ne}
 
@@ -181,18 +231,8 @@ function computevortexvelocities(vortexmodel::VortexModel{Nb,Ne}; kwargs...) whe
     return Ẋ_vortices
 end
 
-function computevortexvelocities(vortexmodel::VortexModel{Nb,Ne}, X_vortices::VectorData{Nv}; kwargs...) where {Nb,Ne,Nv}
-
-    @assert Nv == length(vortexmodel.vortices)
-
-    setvortexpositions!(vortexmodel,X_vortices)
-    Ẋ_vortices = computevortexvelocities(vortexmodel; kwargs...)
-
-    return Ẋ_vortices
-end
-
 """
-    computew!(w::Nodes,vortexmodel::VortexModel)
+$(SIGNATURES)
 
 Computes the vorticity field `w` associated with the vortices stored in `vortexmodel` on the physical grid.
 """
@@ -215,8 +255,9 @@ function computew!(wphysical::Nodes{Dual}, vortexmodel::VortexModel{Nb,Ne})::Nod
 end
 
 """
-    computew(sol::PotentialFlowSolution, vortexmodel::VortexModel, wphysical::Nodes, parameters::ModelParameters)
+$(SIGNATURES)
 
+Computes the vorticity field associated with the vortices stored in `vortexmodel` on the physical grid.
 """
 function computew(vortexmodel::VortexModel{Nb,Ne})::Nodes{Dual} where {Nb,Ne}
 
@@ -229,8 +270,9 @@ function computew(vortexmodel::VortexModel{Nb,Ne})::Nodes{Dual} where {Nb,Ne}
 end
 
 """
-    solvesystem!(sol::PotentialFlowSolution, vortexmodel::VortexModel, wphysical::Nodes, parameters::ModelParameters)
+$(SIGNATURES)
 
+Computes the potential flow solution `sol` for the bodies in `vortexmodel` and vorticity on the physical grid `wphysical`. If the vortexmodel contains bodies with regularized edges and a number of vortices which is greater than or equal to the number of regularized edges, the returned solution contains the computed strengths of the last N vortices in `vortexmodel`, with N the number of regularized edges. A uniform flow, body velocities, bound circulation values for the unregularized bodies, and suction parameters for regularized bodies can be specified using the `parameters` keyword.
 """
 function solvesystem!(sol::UnregularizedPotentialFlowSolution, vortexmodel::VortexModel{Nb,0}, wphysical::Nodes{Dual}; parameters=ModelParameters()) where {Nb}
 
@@ -249,7 +291,7 @@ function solvesystem!(sol::UnregularizedPotentialFlowSolution, vortexmodel::Vort
     ldiv!(sol,vortexmodel.system,rhs)
     _scaletophysicalspace!(sol,cellsize(vortexmodel.g))
 
-    addψ∞!(sol.ψ,vortexmodel,parameters) # Add the uniform flow to the approximation to the continuous stream function field
+    _addψ∞!(sol.ψ,vortexmodel,parameters) # Add the uniform flow to the approximation to the continuous stream function field
 
     return sol
 end
@@ -266,7 +308,7 @@ function solvesystem!(sol::SteadyRegularizedPotentialFlowSolution, vortexmodel::
     ldiv!(sol,vortexmodel.system,rhs)
     _scaletophysicalspace!(sol,cellsize(vortexmodel.g))
 
-    addψ∞!(sol.ψ,vortexmodel,parameters) # Add the uniform flow to the approximation to the continuous stream function field
+    _addψ∞!(sol.ψ,vortexmodel,parameters) # Add the uniform flow to the approximation to the continuous stream function field
 
     return sol
 end
@@ -285,14 +327,15 @@ function solvesystem!(sol::UnsteadyRegularizedPotentialFlowSolution, vortexmodel
     ldiv!(sol,vortexmodel.system,rhs)
     _scaletophysicalspace!(sol,cellsize(vortexmodel.g))
 
-    addψ∞!(sol.ψ,vortexmodel,parameters) # Add the uniform flow to the approximation to the continuous stream function field
+    _addψ∞!(sol.ψ,vortexmodel,parameters) # Add the uniform flow to the approximation to the continuous stream function field
 
     return sol
 end
 
 """
-    solvesystem(vortexmodel::VortexModel, wphysical::Nodes; parameters::ModelParameters)
+$(SIGNATURES)
 
+Computes and returns the potential flow solution for the bodies in `vortexmodel` and vorticity on the physical grid `wphysical`. If the vortexmodel contains bodies with regularized edges and a number of vortices which is greater than or equal to the number of regularized edges, the returned solution contains the computed strengths of the last N vortices in `vortexmodel`, with N the number of regularized edges. A uniform flow, body velocities, bound circulation values for the unregularized bodies, and suction parameters for regularized bodies can be specified using the `parameters` keyword.
 """
 function solvesystem(vortexmodel::VortexModel{Nb,0,false}, wphysical::Nodes{Dual}; kwargs...) where {Nb}
 
@@ -318,6 +361,11 @@ function solvesystem(vortexmodel::VortexModel{Nb,Ne,true}, wphysical::Nodes{Dual
     return sol
 end
 
+"""
+$(SIGNATURES)
+
+Computes and returns the stream function field on the physical grid for the potential flow associated with the current state of `vortexmodel`. A uniform flow, body velocities, bound circulation values for the unregularized bodies, and suction parameters for regularized bodies can be specified using the `parameters` keyword.
+"""
 function computeψ(vortexmodel::VortexModel; kwargs...)::Nodes{Dual}
 
     computew!(vortexmodel._w, vortexmodel)
@@ -326,7 +374,7 @@ function computeψ(vortexmodel::VortexModel; kwargs...)::Nodes{Dual}
     return sol.ψ
 end
 
-function addψ∞!(ψ, vortexmodel::VortexModel, parameters)::Nodes{Dual}
+function _addψ∞!(ψ, vortexmodel::VortexModel, parameters)::Nodes{Dual}
 
     xg,yg = coordinates(vortexmodel._nodedata,vortexmodel.g)
     ψ .+= parameters.U∞[1].*yg' .- parameters.U∞[2].*xg
@@ -349,32 +397,39 @@ function _computeψboundaryconditions!(ψb::ScalarData, vortexmodel::VortexModel
     return
 end
 
-# frame of reference
+"""
+$(SIGNATURES)
 
-# w and f are physical quantities
-function computeimpulse(vortexmodel::VortexModel{Nb,Ne}, w::Nodes{Dual}, f::ScalarData, Ubvec) where {Nb,Ne}
+Computes the impulse associated with the vorticity `wphysical`, the bound vortex sheet strength `fphysical`, and the velocities `Ubvec` of the discrete points of the bodies in `vortexmodel`.
+"""
+function computeimpulse(vortexmodel::VortexModel{Nb,Ne}, wphysical::Nodes{Dual}, fphysical::ScalarData, Ubvec) where {Nb,Ne}
 
     @unpack g, vortices, bodies, _bodydata, _bodyvectordata = vortexmodel
 
-    xg, yg = coordinates(w,g)
+    xg, yg = coordinates(wphysical,g)
     Δx = cellsize(g)
 
     # Formula 61 (see formula 6.16 in book)
-    impulse = [Δx^2*sum(w.*yg'),Δx^2*sum(-w.*xg)]
+    impulse = [Δx^2*sum(wphysical.*yg'),Δx^2*sum(-wphysical.*xg)]
 
     for i in 1:Nb
-        impulse += computeimpulsesurfaceintegral(bodies[i], f[getrange(bodies,i)], Ubvec.u[getrange(bodies,i)], Ubvec.v[getrange(bodies,i)])
+        impulse += _computeimpulsesurfaceintegral(bodies[i], fphysical[getrange(bodies,i)], Ubvec.u[getrange(bodies,i)], Ubvec.v[getrange(bodies,i)])
     end
 
     return impulse[1], impulse[2]
 end
 
-function computeimpulse(vortexmodel::VortexModel; parameters=ModelParameters()) where {Nb}
+"""
+$(SIGNATURES)
+
+Computes the impulse associated with the current state vortices and bodies in `vortexmodel`.
+"""
+function computeimpulse(vortexmodel::VortexModel; parameters=ModelParameters())
 
     @unpack bodies, _nodedata, _bodydata, _bodyvectordata, _w = vortexmodel
 
     computew!(_nodedata,vortexmodel)
-    # Solve system, _bodydata will contain f
+    # Solve system
     sol = solvesystem(vortexmodel, _nodedata, parameters=parameters)
 
     # Convert Ub into VectorData corresponding with the body points
@@ -385,16 +440,21 @@ function computeimpulse(vortexmodel::VortexModel; parameters=ModelParameters()) 
     return P_x, P_y
 end
 
-function computeimpulsesurfaceintegral(body::Body{N,RigidBodyTools.ClosedBody}, f, u, v) where {N}
+function _computeimpulsesurfaceintegral(body::Body{N,RigidBodyTools.ClosedBody}, f, u, v) where {N}
     nx,ny = normalmid(body)
     Δs = dlengthmid(body)
     return computecrossproductsurfaceintegral(body,(f./Δs + nx.*v - ny.*u).*Δs)
 end
 
-function computeimpulsesurfaceintegral(body::Body{N,RigidBodyTools.OpenBody}, f, u, v) where {N}
+function _computeimpulsesurfaceintegral(body::Body{N,RigidBodyTools.OpenBody}, f, u, v) where {N}
     return computecrossproductsurfaceintegral(body,f)
 end
 
+"""
+$(SIGNATURES)
+
+Computes the translational coefficients of the added mass matrix of the bodies in `vortexmodel`.
+"""
 function computeaddedmassmatrix(vortexmodel::VortexModel{Nb,Ne}) where {Nb,Ne}
     @unpack g, vortices, bodies, _bodyvectordata, _w = vortexmodel
 
@@ -414,7 +474,7 @@ function computeaddedmassmatrix(vortexmodel::VortexModel{Nb,Ne}) where {Nb,Ne}
             _computebodypointsvelocity!(_bodyvectordata,Ub,bodies)
             sol = solvesystem(vortexmodel, _w; parameters=ModelParameters(Ub=Ub))
             for i in 1:Nb
-                M[(i-1)*2+1:(i-1)*2+2,(movingbodyindex-1)*2+dir] .= computeimpulsesurfaceintegral(bodies[i], sol.f[getrange(bodies,i)], _bodyvectordata.u[getrange(bodies,i)], _bodyvectordata.v[getrange(bodies,i)])
+                M[(i-1)*2+1:(i-1)*2+2,(movingbodyindex-1)*2+dir] .= _computeimpulsesurfaceintegral(bodies[i], sol.f[getrange(bodies,i)], _bodyvectordata.u[getrange(bodies,i)], _bodyvectordata.v[getrange(bodies,i)])
             end
         end
     end
