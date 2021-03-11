@@ -1,25 +1,38 @@
 using GridPotentialFlow
 using Test
+using Literate
 
-@testset "System vectors" begin
-    include("solver/systemvectors.jl")
+const GROUP = get(ENV, "GROUP", "Notebooks")
+
+notebookdir = "../examples"
+docdir = "../docs/src/manual"
+litdir = "./literate"
+solverdir = "./solver"
+
+if GROUP == "All" || GROUP == "Solver"
+  @testset "System vectors" begin
+      include("solver/systemvectors.jl")
+  end
+  # @testset "Unregularized potential flow systems" begin
+  #     include("unregularizedsystems.jl")
+  # end
+  @testset "Regularized potential flow systems" begin
+      include("solver/regularizedsystems.jl")
+  end
 end
-# @testset "Unregularized potential flow systems" begin
-#     include("unregularizedsystems.jl")
-# end
-@testset "Regularized potential flow systems" begin
-    include("solver/regularizedsystems.jl")
+
+if GROUP == "All" || GROUP == "Notebooks"
+  for (root, dirs, files) in walkdir(litdir)
+    for file in files
+      endswith(file,".jl") && Literate.notebook(joinpath(root, file),notebookdir)
+    end
+  end
 end
-@testset "Vortex model possible flows" begin
-    include("vortexmodel/possibleflows.jl")
-end
-@testset "Vortex dynamics" begin
-    include("vortexmodel/vortexnearcylinder.jl")
-    include("vortexmodel/corotatingvortices.jl")
-end
-@testset "Vortex shedding" begin
-    include("vortexmodel/vortexshedding.jl")
-end
-@testset "Impulse" begin
-    include("vortexmodel/cylinderimpulse.jl")
+
+if GROUP == "Documentation"
+  for (root, dirs, files) in walkdir(litdir)
+    for file in files
+      endswith(file,".jl") && Literate.markdown(joinpath(root, file),docdir)
+    end
+  end
 end
