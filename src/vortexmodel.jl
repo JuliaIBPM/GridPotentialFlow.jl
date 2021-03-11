@@ -12,6 +12,8 @@ export VortexModel, computeψ, computew, computew!, computevortexvelocities, com
 # TODO: rotational coefficients of added mass matrix
 # TODO: add examples
 # TODO: mention frame of reference for computeimpulse
+# TODO: check if fk_vec in systems.jl can be simplified
+# TODO: let literate create scripts for testing
 
 """
 $(TYPEDEF)
@@ -55,13 +57,11 @@ $(TYPEDSIGNATURES)
 
 Construct a vortex model using the given function.
 """
-function VortexModel(g::PhysicalGrid; bodies::Union{Body,Vector{<:Body},BodyList}=BodyList(), vortices::Union{Vortex,Vector{<:Vortex},VortexList}=VortexList(), edges::Vector{<:Integer}=Int[])
+function VortexModel(g::PhysicalGrid; bodies::Union{Vector{<:Body},BodyList}=BodyList(), vortices::Union{Vector{<:Vortex},VortexList}=VortexList(), edges::Vector{<:Integer}=Int[])
 
     # Ensure that bodies are of type BodyList
     # TODO: check other ways for code robustness
-    if bodies isa Body
-        bodies = BodyList([bodies])
-    elseif bodies isa Vector{<:Body}
+    if bodies isa Vector{<:Body}
         bodies = BodyList(bodies)
     end
 

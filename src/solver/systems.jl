@@ -140,6 +140,7 @@ function ldiv!(sol::UnsteadyRegularizedPotentialFlowSolution{T,TU,TF}, sys::Regu
     #     δΓ_kvec .= _computevortexstrengths(Nk, k_sheddingedges::Vector{Integer}, P_kvec, f̃_kvec, f̃lim_kvec, f₀, w)
     # end
 
+    # eq 2.61
     δΓ_kvec .= _computevortexstrengths(Nk, k_sheddingedges, P_kvec, f̃_kvec, activef̃lim_kvec, f, f₀, Γw)
 
     # Add the vorticity of the shedded vortices to the vorticity field and use this to compute the steady regularized solution
