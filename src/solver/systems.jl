@@ -97,15 +97,21 @@ function ldiv!(sol::SteadyRegularizedPotentialFlowSolution{T,TU,TF}, sys::Regula
 
     @assert size(f̃lim_kvec) == size(e_kvec)
 
+    # eq 2.33
     _computeconstraintonly!(f,S̃,ConstrainedSystems._unwrap_vec(-w),ψb,ConstrainedSystems._unwrap_vec(ψ))
+    # eq 2.35 + accounting for generalized edge conditions
     ψ₀ .= mean(e_kvec)'*f .- mean(f̃lim_kvec)
+    # eq 2.37 + accounting for generalized edge conditions
     f .= mean(P_kvec)*f + _TF_ones*mean(f̃lim_kvec) # Represents f̃
-    ψ .= reshape(-S̃.A⁻¹*(reshape(w,:) + S̃.B₁ᵀ*f),size(w))
+    # eq 2.38
+    ψ .= reshape(_w_buf,:) .+ S̃.B₁ᵀ*f
+    ψ .= reshape(-S̃.A⁻¹*ψ,size(ψ))
     f .*= f₀
 
     return sol
 end
 
+# TODO: add loop to correct vortex strengths
 function ldiv!(sol::UnsteadyRegularizedPotentialFlowSolution{T,TU,TF}, sys::RegularizedPotentialFlowSystem{Nb,Nk,T,TU,TF,TE}, rhs::UnsteadyRegularizedPotentialFlowRHS{TU,TF,TSP}) where {Nb,Nk,T,TU,TF,TE,TSP}
 
     @unpack S̃, f₀, e_kvec, d_kvec, f̃_kvec, P_kvec, _TF_zeros, _TF_ones, _w_buf = sys
@@ -118,10 +124,12 @@ function ldiv!(sol::UnsteadyRegularizedPotentialFlowSolution{T,TU,TF}, sys::Regu
     @assert length(f̃lim_kvec) == Nk
     @assert length(δΓ_kvec) == Nk
 
+    # eq 2.33
     _computeconstraintonly!(f,S̃,ConstrainedSystems._unwrap_vec(-w),ψb,ConstrainedSystems._unwrap_vec(ψ))
 
     activef̃lim_kvec = Vector{SuctionParameter}()
     for k in 1:Nk
+        # eq 2.47
         _computeconstraintonly!(f̃_kvec[k],S̃,ConstrainedSystems._unwrap_vec(-d_kvec[k]),_TF_zeros,ConstrainedSystems._unwrap_vec(ψ))
         activef̃lim = _findactivef̃limit(e_kvec[k],f,f̃lim_kvec[k])
         push!(activef̃lim_kvec,activef̃lim)
@@ -130,26 +138,21 @@ function ldiv!(sol::UnsteadyRegularizedPotentialFlowSolution{T,TU,TF}, sys::Regu
     # The shedding edges are the _TF_ones for which the active f̃ limit is not Inf
     k_sheddingedges = [k for k in 1:Nk if activef̃lim_kvec[k] != Inf]
 
-    # TODO: add loop below to correct vortex strengths (after adding constraint function to ConstrainedSystems)
-    # while true
-    #     f̃ .= constraint(S̃\SaddleVector(-w .+ sum(δΓ_kvec.*d_kvec,ψb))
-    #     k_sheddingedges, activef̃limits_kvec = _findsheddingedges(Nk, e_kvec, f̃, f̃min_kvec, f̃max_kvec)
-    #     if k_sheddingedges
-    #         break
-    #     end
-    #     δΓ_kvec .= _computevortexstrengths(Nk, k_sheddingedges::Vector{Integer}, P_kvec, f̃_kvec, f̃lim_kvec, f₀, w)
-    # end
-
+    # eq 2.49, eq 2.56, eq 2.61
     δΓ_kvec .= _computevortexstrengths(Nk, k_sheddingedges, P_kvec, f̃_kvec, activef̃lim_kvec, f, f₀, Γw)
 
     # Add the vorticity of the shedded vortices to the vorticity field and use this to compute the steady regularized solution
     _w_buf .= w .+ sum(δΓ_kvec.*d_kvec)
-
-    # TODO: fails if there are no shedding edges
-    steadyrhs = PotentialFlowRHS(_w_buf, ψb, activef̃lim_kvec[k_sheddingedges])
-    steadysys = RegularizedPotentialFlowSystem(S̃, f₀, e_kvec[k_sheddingedges], TU[], TF[], P_kvec[k_sheddingedges], _TF_zeros, _TF_ones, _w_buf)
-    steadysol = SteadyRegularizedPotentialFlowSolution(ψ,f,ψ₀)
-    ldiv!(steadysol,steadysys,steadyrhs)
+    # Add the bound vortex sheet strength induced by the shedded vortices to the bound vortex sheet strength induced by w and the boundary conditions
+    f .= f .+ sum(δΓ_kvec.*f̃_kvec)
+    # eq 2.57 + accounting for generalized edge conditions
+    ψ₀ .= mean(e_kvec[k_sheddingedges])'*f .- mean(f̃lim_kvec[k_sheddingedges])
+    # eq 2.58 + accounting for generalized edge conditions
+    f .= mean(P_kvec[k_sheddingedges])*f + _TF_ones*mean(f̃lim_kvec[k_sheddingedges]) # Represents f̃
+    ψ .= reshape(_w_buf,:) .+ S̃.B₁ᵀ*f
+    ψ .= reshape(-S̃.A⁻¹*ψ,size(ψ))
+    # eq 2.24
+    f .*= f₀
 
     return sol
 end

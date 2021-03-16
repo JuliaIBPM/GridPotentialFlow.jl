@@ -8,6 +8,7 @@ export VortexModel, computeψ, computew, computew!, computevortexvelocities, com
 # TODO: create PotentialFlowBody type that encapsulates Ub, Γb, and any regularized edges
 # TODO: try to remove _d_kvec from VortexModel
 # TODO: check memory allocation inverse laplacian in ConstrainedSystems
+# TODO: match names of Ne and Nk
 
 mutable struct VortexModel{Nb,Ne,isshedding}
     g::PhysicalGrid
