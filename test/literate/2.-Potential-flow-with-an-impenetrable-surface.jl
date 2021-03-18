@@ -1,33 +1,33 @@
 #=
 # Potential flow with an impenetrable surface
 
-This page introduces the treatment of rigid impenetrable surfaces in `GridPotentialFlow`. We can impose the no-penetration constraint by setting the fluid streamfunction equal to that of the surface $s_b$, up to a uniform value $s_0$. The discrete no-penetration constraint is thus
+This page introduces the treatment of rigid impenetrable surfaces in `GridPotentialFlow`. We can impose the no-penetration constraint by setting the fluid streamfunction equal to that of the surface $\mathfrak{s}_b$, up to a uniform value $s_0$. The discrete no-penetration constraint is thus
 
-$\mathsf{Es}=s_{b}-\mathsf{E} \mathsf{s}_{\infty}-s_{0},$
+$\mathsf{Es}=\mathfrak{s}_{b}-\mathsf{E} \mathsf{s}_{\infty}-\mathfrak{s}_{0},$
 
 where $\mathsf{E}$ is the interpolation operator that interpolates grid data to the surface points, \mathsf{s}_{\infty} is the streamfunction of the uniform flow. For a body translating at velocity $(U,V)$ and rotating at angular velocity $\Omega$, this streamfunction would be
 
-$s_{b,k} = U r_y - V r_x - \frac{1}{2} \Omega (r_x^2+r_y^2).$
+$\mathfrak{s}_{b,k} = U \mathfrak{r}_y - V \mathfrak{r}_x - \frac{1}{2} \Omega (\mathfrak{r}_x^2+\mathfrak{r}_y^2).$
 
-For later shorthand, we will denote the difference between the body motion streamfunction and interpolated uniform flow streamfunction by $s'_b \equiv \s_b - \mathsf{E} \mathsf{s}_{\infty}$. The no-penetration constraint is enforced in the basic potential flow problem with the help of a vector of Lagrange multipliers, $f$, on the surface points. The modified potential flow problem is thus
+For later shorthand, we will denote the difference between the body motion streamfunction and interpolated uniform flow streamfunction by $\mathfrak{s}'_b \equiv \\mathfrak{s}_b - \mathsf{E} \mathsf{s}_{\infty}$. The no-penetration constraint is enforced in the basic potential flow problem with the help of a vector of Lagrange multipliers, $\mathfrak{f}$, on the surface points. The modified potential flow problem is thus
 
-$\mathsf{Ls} + \mathsf{R}f = -\mathsf{w},$
+$\mathsf{Ls} + \mathsf{R}\mathfrak{f} = -\mathsf{w},$
 
 where $\mathsf{R}$ is the regularization operator that transfers data from surface data to nodes. that $\mathsf{E}$ can be constructed (and we will assume it has) so that it is the transpose of the interpolation operator, $\mathsf{E} = \mathsf{R}^{T}$.
 
-From the previous equation, it is clear (by simple comparison with the vorticity on the right-hand side) that the vector $\vsheet$ represents the strength of the discrete bound vortex sheet on the surface. Suppose we consider the bound vortex sheet $\gamma(s)$ that emerges from the analogous continuous problem on the undiscretized surface, where $s$ is the arc-length parameter along the surface. At each point $p$, the discrete solution $f$ is approximately equal to this continuous solution, multiplied by the length $\delta S_p$ of the small segment surrounding the point:
+From the previous equation, it is clear (by simple comparison with the vorticity on the right-hand side) that the vector $\vsheet$ represents the strength of the discrete bound vortex sheet on the surface. Suppose we consider the bound vortex sheet $\gamma(s)$ that emerges from the analogous continuous problem on the undiscretized surface, where $s$ is the arc-length parameter along the surface. At each point $p$, the discrete solution $\mathfrak{f}$ is approximately equal to this continuous solution, multiplied by the length $\delta S_p$ of the small segment surrounding the point:
 
-$e_{p}^{T} f \approx \gamma(s) \delta S_p$.$
+$\mathfrak{e}_{p}^{T} \mathfrak{f} \approx \gamma(s) \delta S_p$.$
 
 Thus, the potential flow problem in the presence of the impenetrable surface is
 
 $\begin{bmatrix}
 \mathsf{L} & \mathsf{R} \\
 \mathsf{E} &  0
-\end{bmatrix} \begin{pmatrix} \mathsf{s} \\ f \end{pmatrix} =
-\begin{pmatrix} -\mathsf{w} \\ s'_b - s_0 \end{pmatrix}.$
+\end{bmatrix} \begin{pmatrix} \mathsf{s} \\ \mathfrak{f} \end{pmatrix} =
+\begin{pmatrix} -\mathsf{w} \\ \mathfrak{s}'_b - \mathfrak{s}_0 \end{pmatrix}.$
 
-This problem has the structure of a generic saddle-point problem and we will encounter many such systems in this work. `GridPotentialFlow.jl` will automatically formulate the no-penetration constraint on the streamfunction and solve the saddle system when it needs to.
+This problem has the structure of a generic saddle-point problem and we will encounter many such systems in this work. `GridPotentialFlow.jl` will automatically formulate the no-penetration constraint on the streamfunction and solve the saddle system when it needs to. See the next page for the role of $\mathfrak{s}_0$ and how it will be treated internally. 
 =#
 
 # We will now consider two examples. In these examples, we use the following grid.
@@ -58,7 +58,7 @@ circle = Circle(Rc,2*cellsize(g))
 Rv = 3/2*Rc
 vortex = Vortex(Rv,0.0,1.0);
 
-# We construct the `VortexModel` by using the optional `bodies` keyword. In this case, we are interested in the bound vortex sheet strength $f$, instead of just the streamfunction field. For this reason, we use `solvesystem`, which in this case returns an `UnregularizedPotentialFlowSolution`.
+# We construct the `VortexModel` by using the optional `bodies` keyword. In this case, we are interested in the bound vortex sheet strength $\mathfrak{f}$, instead of just the streamfunction field. For this reason, we use `solvesystem`, which in this case returns an `UnregularizedPotentialFlowSolution`.
 model = VortexModel(g,vortices=[vortex],bodies=[circle]);
 w = computew(model)
 sol = solvesystem(model,w);

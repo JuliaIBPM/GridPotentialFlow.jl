@@ -14,7 +14,7 @@ makedocs(
         "Home" => "index.md",
         "Manual" => ["manual/1.-Basic-potential-flow-problem.md",
                      "manual/2.-Potential-flow-with-an-impenetrable-surface.md",
-                     # "manual/3.-Non-uniqueness-and-discrete-circulation.md",
+                     "manual/3.-Non-uniqueness-and-discrete-circulation.md",
                      # "manual/4.-The-Kutta-condition.md",
                      # "manual/5.-Generalized-edge-conditions.md",
                      # "manual/6.-Force-and-the-added-mass.md"
