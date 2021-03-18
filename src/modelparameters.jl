@@ -12,7 +12,7 @@ struct ModelParameters
     σ
 end
 
-function ModelParameters(;Ub=(0.0,0.0), U∞=(0.0,0.0), Γb=nothing, σ=nothing)
+function ModelParameters(;Ub=nothing, U∞=(0.0,0.0), Γb=nothing, σ=nothing)
     return ModelParameters(Ub,U∞,Γb,σ)
 end
 

@@ -38,6 +38,7 @@ struct RegularizedPotentialFlowSystem{Nb,Nk,T,TU,TF,TE} <: PotentialFlowSystem
         _TF_zeros .= 0
         _TF_ones = TF()
         _TF_ones .= 1
+        # _TFTFt_ones = _TF_ones*_TF_ones'
         new{1,length(e_kvec),T,TU,TF,TE}(S̃, f₀, e_kvec, d_kvec, f̃_kvec, P_kvec, _TF_zeros, _TF_ones, _w_buf)
     end
 
@@ -97,6 +98,8 @@ function ldiv!(sol::SteadyRegularizedPotentialFlowSolution{T,TU,TF}, sys::Regula
 
     @assert size(f̃lim_kvec) == size(e_kvec)
 
+    # _removecirculation!(ψb,sys)
+
     _computeconstraintonly!(f,S̃,ConstrainedSystems._unwrap_vec(-w),ψb,ConstrainedSystems._unwrap_vec(ψ))
     ψ₀ .= mean(e_kvec)'*f .- mean(f̃lim_kvec)
     f .= mean(P_kvec)*f + _TF_ones*mean(f̃lim_kvec) # Represents f̃
@@ -117,6 +120,8 @@ function ldiv!(sol::UnsteadyRegularizedPotentialFlowSolution{T,TU,TF}, sys::Regu
     @assert length(f̃_kvec) == Nk
     @assert length(f̃lim_kvec) == Nk
     @assert length(δΓ_kvec) == Nk
+
+    # _removecirculation!(ψb,sys)
 
     _computeconstraintonly!(f,S̃,ConstrainedSystems._unwrap_vec(-w),ψb,ConstrainedSystems._unwrap_vec(ψ))
 
@@ -230,12 +235,10 @@ function setd_kvec!(sys::RegularizedPotentialFlowSystem{Nb,Nk,T,TU,TF,TE}, d_kve
 
 end
 
-function _removecirculation(sys,rhs)
-    _TF_ones = typeof(rhs.ψb)()
-    _TF_ones .= 1
-    Γ₀ = _TF_ones'*(sys.S.S⁻¹*_TF_ones)
-    rhs.ψb .= rhs.ψb-(_TF_ones*_TF_ones')/Γ₀*(sys.S.S⁻¹*rhs.ψb)
-end
+# function _removecirculation!(ψb,sys)
+#     Γ₀ = sum(sys.f₀)
+#     ψb .= ψb .- 1/Γ₀*sys._TFTFt_ones*sys.S̃.S⁻¹*ψb
+# end
 
 function _computeconstraintonly!(f,sys,w,ψb,nodes)
     nodes .= sys.A⁻¹*w

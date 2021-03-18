@@ -9,11 +9,13 @@ export VortexModel, computeψ, computew, computew!, computevortexvelocities, com
 # TODO: try to remove _d_kvec from VortexModel
 # TODO: check memory allocation inverse laplacian in ConstrainedSystems
 # TODO: check if TU, TF should be used to enforce type compatibility in functions
+# TODO: add rotation
 # TODO: rotational coefficients of added mass matrix
 # TODO: add examples
 # TODO: mention frame of reference for computeimpulse
 # TODO: check if fk_vec in systems.jl can be simplified
 # TODO: let literate create scripts for testing
+# TODO: check circulation if bodies are not centered at origin. Possible need for circulation removal operator
 
 """
 $(TYPEDEF)
@@ -384,7 +386,7 @@ end
 
 function _computeψboundaryconditions!(ψb::ScalarData, vortexmodel::VortexModel, parameters)
 
-    _computebodypointsvelocity!(vortexmodel._bodyvectordata, parameters.Ub, vortexmodel.bodies) # Convert Ub into VectorData corresponding with the body points
+    _computebodypointsvelocity!(vortexmodel._bodyvectordata, parameters.Ub, vortexmodel.bodies) # Convert Ub into VectorData corresponding to the body points
 
     # The discrete streamfunction field is constrained to a prescribed streamfunction on the body that describes the body motion. The body presence in the uniform flow is taken into account by subtracting its value from the body motion (i.e. a body motion in the -U∞ direction) and adding the uniform flow at the end of the solvesystem routine.
     ψb .= -parameters.U∞[1]*(collect(vortexmodel.bodies)[2]) .+ parameters.U∞[2]*(collect(vortexmodel.bodies)[1]);

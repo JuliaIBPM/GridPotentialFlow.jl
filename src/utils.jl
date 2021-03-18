@@ -15,9 +15,12 @@ end
 
 function _computebodypointsvelocity!(Ubvec,Ub,bodies)
 
-    # Assure that Ub is an array
+    # Ensure that Ub is an array whose length equals to the number of bodies
     if Ub isa Tuple
         Ub = [Ub]
+    end
+    if isnothing(Ub)
+        Ub = fill((0.0,0.0),length(bodies))
     end
 
     @assert length(Ub) == length(bodies)
