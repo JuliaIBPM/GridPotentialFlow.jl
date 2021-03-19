@@ -15,9 +15,9 @@ $\mathsf{Ls} + \mathsf{R}\mathfrak{f} = -\mathsf{w},$
 
 where $\mathsf{R}$ is the regularization operator that transfers data from surface data to nodes. that $\mathsf{E}$ can be constructed (and we will assume it has) so that it is the transpose of the interpolation operator, $\mathsf{E} = \mathsf{R}^{T}$.
 
-From the previous equation, it is clear (by simple comparison with the vorticity on the right-hand side) that the vector $\vsheet$ represents the strength of the discrete bound vortex sheet on the surface. Suppose we consider the bound vortex sheet $\gamma(s)$ that emerges from the analogous continuous problem on the undiscretized surface, where $s$ is the arc-length parameter along the surface. At each point $p$, the discrete solution $\mathfrak{f}$ is approximately equal to this continuous solution, multiplied by the length $\delta S_p$ of the small segment surrounding the point:
+From the previous equation, it is clear (by simple comparison with the vorticity on the right-hand side) that the vector $\mathfrak{f}$ represents the strength of the discrete bound vortex sheet on the surface. Suppose we consider the bound vortex sheet $\gamma(s)$ that emerges from the analogous continuous problem on the undiscretized surface, where $s$ is the arc-length parameter along the surface. At each point $p$, the discrete solution $\mathfrak{f}$ is approximately equal to this continuous solution, multiplied by the length $\delta S_p$ of the small segment surrounding the point:
 
-$\mathfrak{e}_{p}^{T} \mathfrak{f} \approx \gamma(s) \delta S_p$.$
+$\mathfrak{e}_{p}^{T} \mathfrak{f} \approx \gamma(s) \delta S_p.$
 
 Thus, the potential flow problem in the presence of the impenetrable surface is
 
@@ -27,7 +27,7 @@ $\begin{bmatrix}
 \end{bmatrix} \begin{pmatrix} \mathsf{s} \\ \mathfrak{f} \end{pmatrix} =
 \begin{pmatrix} -\mathsf{w} \\ \mathfrak{s}'_b - \mathfrak{s}_0 \end{pmatrix}.$
 
-This problem has the structure of a generic saddle-point problem and we will encounter many such systems in this work. `GridPotentialFlow.jl` will automatically formulate the no-penetration constraint on the streamfunction and solve the saddle system when it needs to. See the next page for the role of $\mathfrak{s}_0$ and how it will be treated internally. 
+This problem has the structure of a generic saddle-point problem and we will encounter many such systems in this work. `GridPotentialFlow.jl` will automatically formulate the no-penetration constraint on the streamfunction and solve the saddle system when it needs to. See the next page for the role of $\mathfrak{s}_0$ and how it will be treated internally.
 =#
 
 # We will now consider two examples. In these examples, we use the following grid.

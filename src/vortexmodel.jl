@@ -15,7 +15,7 @@ export VortexModel, computeψ, computew, computew!, computevortexvelocities, com
 # TODO: mention frame of reference for computeimpulse
 # TODO: check if fk_vec in systems.jl can be simplified
 # TODO: let literate create scripts for testing
-# TODO: check circulation if bodies are not centered at origin. Possible need for circulation removal operator
+# TODO: consider no deepcopy for new vortices in the methods and use deepcopy in the scripts instead
 
 """
 $(TYPEDEF)

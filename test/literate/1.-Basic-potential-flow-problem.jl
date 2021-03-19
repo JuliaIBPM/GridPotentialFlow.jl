@@ -124,7 +124,8 @@ model = VortexModel(g,vortices=[v1,v2]);
 Δt = 0.005;
 T = 0:Δt:Tv;
 
-#= To step in time, we update the position of the $q$th vortex as $X^{n+1}_q = X^{n}_q + Δt Ẋ^{n}_q$ (forward Euler) in a for-loop. The flow velocity at the locations of the vortices $Ẋ$ is obtained with `computevortexvelocities`, which regularizes the vorticity to the grid, solves the potential flow system, and interpolates the velocities from the grid to the vortex locations as
+#=
+To step in time, we update the position of the $q$th vortex as $X^{n+1}_q = X^{n}_q + Δt Ẋ^{n}_q$ (forward Euler) in a for-loop. The flow velocity at the locations of the vortices $Ẋ$ is obtained with `computevortexvelocities`, which regularizes the vorticity to the grid, solves the potential flow system, and interpolates the velocities from the grid to the vortex locations as
 
 $
 \left(U_{q}, V_{q}\right)=\sum_{i, j} \mathsf{v}_{i j} d\left(\frac{\mathsf{x}_{i}-X_{q}}{\Delta x}\right)\left(\frac{\mathsf{y}_{j}-Y_{q}}{\Delta x}\right),
