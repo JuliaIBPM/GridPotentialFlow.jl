@@ -7,7 +7,6 @@ import Base: @propagate_inbounds,getindex, setindex!,iterate,size,length,push!,
     VortexList
 
 """
-# TODO: consider using StructArray
 struct VortexList
     list::Vector{Vortex}
 end

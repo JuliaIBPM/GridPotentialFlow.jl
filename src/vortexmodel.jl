@@ -1,7 +1,7 @@
 import CartesianGrids: curl!, Laplacian
 import LinearAlgebra: Diagonal, norm
 
-export VortexModel, computeψ, computew, computew!, computevortexvelocities, computeregularizationmatrix, getstrengths, getpositions, setvortexpositions!, getvortexpositions, setvortices!, pushvortices!, computeimpulse, computeaddedmassmatrix, solvesystem, solvesystem!
+export VortexModel, computeψ, computew, computew!, computevortexvelocities, _computeregularizationmatrix, getstrengths, getpositions, setvortexpositions!, getvortexpositions, setvortices!, pushvortices!, computeimpulse, computeaddedmassmatrix, solvesystem, solvesystem!
 
 # TODO: check if _computeψboundaryconditions needs to be faster
 # TODO: impulse case when U∞ is specified instead of Ub
@@ -16,6 +16,8 @@ export VortexModel, computeψ, computew, computew!, computevortexvelocities, com
 # TODO: check if fk_vec in systems.jl can be simplified
 # TODO: let literate create scripts for testing
 # TODO: consider no deepcopy for new vortices in the methods and use deepcopy in the scripts instead
+# TODO: use Parameters.jl?
+# TODO: consider using StructArray for vortexlist
 
 """
 $(TYPEDEF)
@@ -88,13 +90,13 @@ function VortexModel(g::PhysicalGrid; bodies::Union{Vector{<:Body},BodyList}=Bod
 
     if Ne == 0 # Without Kutta condition
         L = plan_laplacian(size(_nodedata),with_inverse=true)
-        _Rbmat, _Ebmat = computeregularizationmatrix(g,VectorData(collect(bodies)), _bodydata, _nodedata)
+        _Rbmat, _Ebmat = _computeregularizationmatrix(g,VectorData(collect(bodies)), _bodydata, _nodedata)
         S = SaddleSystem(L,_Ebmat,_Rbmat,SaddleVector(_nodedata,_bodydata))
         system = PotentialFlowSystem(S,_TF_ones)
     else # With Kutta condition
         _d_kvec = [Nodes(Dual,size(g)) for i=1:Ne]
         L = plan_laplacian(size(_nodedata),with_inverse=true)
-        _Rbmat, _Ebmat = computeregularizationmatrix(g,VectorData(collect(bodies)), _bodydata, _nodedata)
+        _Rbmat, _Ebmat = _computeregularizationmatrix(g,VectorData(collect(bodies)), _bodydata, _nodedata)
         S = SaddleSystem(L,_Ebmat,_Rbmat,SaddleVector(_nodedata,_bodydata))
         _nodedata .= 0
         _bodydata .= 1
@@ -303,9 +305,10 @@ function solvesystem!(sol::SteadyRegularizedPotentialFlowSolution, vortexmodel::
     _computeψboundaryconditions!(vortexmodel._ψb, vortexmodel, parameters)
 
     vortexmodel._w .= wphysical
-    SP = isnothing(parameters.σ) ? SuctionParameter.(zeros(Ne)) : deepcopy(parameters.σ)
-
-    rhs = PotentialFlowRHS(vortexmodel._w,vortexmodel._ψb,SP)
+    # TODO: change these next lines when changing code to work for multiple bodies
+    σ_kvec = isnothing(parameters.σ) ? SuctionParameter.(zeros(Ne)) : deepcopy(parameters.σ)
+    f̃lim_kvec = [_computef̃limit(σ,vortexmodel.bodies[1],sum(vortexmodel.system.f₀)) for σ in σ_kvec]
+    rhs = PotentialFlowRHS(vortexmodel._w,vortexmodel._ψb,f̃lim_kvec)
     _scaletoindexspace!(rhs,cellsize(vortexmodel.g))
     ldiv!(sol,vortexmodel.system,rhs)
     _scaletophysicalspace!(sol,cellsize(vortexmodel.g))
@@ -321,10 +324,12 @@ function solvesystem!(sol::UnsteadyRegularizedPotentialFlowSolution, vortexmodel
     _updatesystemd_kvec!(vortexmodel,collect(length(vortexmodel.vortices)-(Ne-1):length(vortexmodel.vortices))) # Update the system.d_kvec to agree with the latest vortex positions
 
     vortexmodel._w .= wphysical
-    SP = isnothing(parameters.σ) ? SuctionParameter.(zeros(Ne)) : deepcopy(parameters.σ)
+    # TODO: change these next lines when changing code to work for multiple bodies
+    σ_kvec = isnothing(parameters.σ) ? SuctionParameter.(zeros(Ne)) : deepcopy(parameters.σ)
+    f̃lim_kvec = [_computef̃limits(σ,vortexmodel.bodies[1],sum(vortexmodel.system.f₀)) for σ in σ_kvec]
     Γw = sum(vortexmodel._w)*cellsize(vortexmodel.g)^2 # Γw = ∫wdA
 
-    rhs = PotentialFlowRHS(vortexmodel._w,vortexmodel._ψb,SP,Γw)
+    rhs = PotentialFlowRHS(vortexmodel._w,vortexmodel._ψb,f̃lim_kvec,Γw)
     _scaletoindexspace!(rhs,cellsize(vortexmodel.g))
     ldiv!(sol,vortexmodel.system,rhs)
     _scaletophysicalspace!(sol,cellsize(vortexmodel.g))
@@ -445,11 +450,11 @@ end
 function _computeimpulsesurfaceintegral(body::Body{N,RigidBodyTools.ClosedBody}, f, u, v) where {N}
     nx,ny = normalmid(body)
     Δs = dlengthmid(body)
-    return computecrossproductsurfaceintegral(body,(f./Δs + nx.*v - ny.*u).*Δs)
+    return _computecrossproductsurfaceintegral(body,(f./Δs + nx.*v - ny.*u).*Δs)
 end
 
 function _computeimpulsesurfaceintegral(body::Body{N,RigidBodyTools.OpenBody}, f, u, v) where {N}
-    return computecrossproductsurfaceintegral(body,f)
+    return _computecrossproductsurfaceintegral(body,f)
 end
 
 """
