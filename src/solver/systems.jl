@@ -121,8 +121,6 @@ function ldiv!(sol::UnsteadyRegularizedPotentialFlowSolution{T,TU,TF}, sys::Regu
     @assert length(f̃lim_kvec) == Nk
     @assert length(δΓ_kvec) == Nk
 
-    println(f̃lim_kvec)
-
     # _removecirculation!(ψb,sys)
 
     _computeconstraintonly!(f,S̃,ConstrainedSystems._unwrap_vec(-w),ψb,ConstrainedSystems._unwrap_vec(ψ))
@@ -137,8 +135,6 @@ function ldiv!(sol::UnsteadyRegularizedPotentialFlowSolution{T,TU,TF}, sys::Regu
     # The shedding edges are the _TF_ones for which the active f̃ limit is not Inf
     k_sheddingedges = [k for k in 1:Nk if activef̃lim_kvec[k] != Inf]
     # TODO: add loop below to correct vortex strengths (after adding constraint function to ConstrainedSystems)
-
-    println(activef̃lim_kvec)
 
     # eq 2.61
     δΓ_kvec .= _computevortexstrengths(Nk, k_sheddingedges, P_kvec, f̃_kvec, activef̃lim_kvec, f, f₀, Γw)
