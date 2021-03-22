@@ -35,8 +35,8 @@ This problem has the structure of a generic saddle-point problem and we will enc
 #md # using GridPotentialFlow
 #md # using Plots
 #md # ```
-#!md # using GridPotentialFlow
-#!md # using Plots
+#!md using GridPotentialFlow
+#!md using Plots
 Δx = 0.03
 Lx = 4.0
 xlim = (-Lx/2,Lx/2)

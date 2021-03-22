@@ -23,8 +23,8 @@ and the circulation can be specified in `ModelParameters`. If it is not specifie
 #md # using GridPotentialFlow
 #md # using Plots
 #md # ```
-#!md # using GridPotentialFlow
-#!md # using Plots
+#!md using GridPotentialFlow
+#!md using Plots
 Δx = 0.01
 Lx = 2.0
 xlim = (-Lx/2,Lx/2)

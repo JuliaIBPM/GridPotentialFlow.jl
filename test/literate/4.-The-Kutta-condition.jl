@@ -9,8 +9,8 @@ For surfaces that contain convex edges, the vortex sheet strength assumes a sing
 #md # using GridPotentialFlow
 #md # using Plots
 #md # ```
-#!md # using GridPotentialFlow
-#!md # using Plots
+#!md using GridPotentialFlow
+#!md using Plots
 Δx = 0.01
 Lx = 2.0
 xlim = (-Lx/2,Lx/2)
