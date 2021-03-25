@@ -31,11 +31,11 @@ w = computew(model)
 modelparameters = ModelParameters(U∞=(1.0,0.0))
 sol = solvesystem(model,w,parameters=modelparameters);
 
-# By plotting many streamlines, we see that how flow accelerates when it tries to make its way around the sharp edges of the flat plate.
+# By plotting many streamlines, we see how flow accelerates as it tries to make its way around the sharp edges of the flat plate. In the continuous case, the velocity field would be singular at the edges.
 plot(sol.ψ,g,levels=60);
 plot!(plate,linecolor=:black,linewidth=2)
 
-# The vortex sheet strength indeed assumes an approximate singular behavior near those edges.
+# The continous vortex sheet strength shows similar singularities at the edges, and also in our discrete case, vortex sheet strength the indeed assumes an approximate singular behavior near those edges.
 plot(sol.f)
 
 #=
@@ -77,7 +77,7 @@ $\begin{bmatrix}
 \mathsf{L} & \tilde{\mathsf{R}} & 0\\
 \mathsf{E} &  0 & \mathfrak{1}\\
 0 & \mathfrak{e}_{k}^{T} & 0\\
-\end{bmatrix} \begin{pmatrix} \mathsf{s} \\ \tilde{\mathfrak{f}} \\ \mathfrak{s}_0 \end{pmatrix} =
+\end{bmatrix} \begin{pmatrix} \mathsf{s} \\ \tilde{\mathfrak{f}} \\ s_0 \end{pmatrix} =
 \begin{pmatrix} -\mathsf{w} \\ \mathfrak{s}'_b \\ 0 \end{pmatrix}.$
 
 =#
@@ -87,7 +87,7 @@ model = VortexModel(g,bodies=[plate],edges=[length(plate)])
 w = computew(model)
 sol = solvesystem(model,w,parameters=modelparameters);
 
-# When there are no vortices present in the model, the package solves the above saddle point system and the solution is the steady state solution.
+# When there are no vortices present in the model, the package solves the above saddle point system and the solution is the steady state solution. Inspection of the streamlines shows that flow now indeed leaves the trailing edge smoothly.
 plot(sol.ψ,g);
 plot!(plate,linecolor=:black,linewidth=2)
 
@@ -124,7 +124,7 @@ $\begin{bmatrix}
 \mathsf{E} &  0 & \mathfrak{1} & 0\\
 0 & \mathfrak{e}_{k}^{T} & 0 & 0\\
 0 & \mathfrak{f}_{0}^{T} & 0 & 1
-\end{bmatrix} \begin{pmatrix} \mathsf{s} \\ \tilde{\mathfrak{f}} \\ \mathfrak{s}_0 \\ \delta\Gamma_1 \end{pmatrix} =
+\end{bmatrix} \begin{pmatrix} \mathsf{s} \\ \tilde{\mathfrak{f}} \\ s_0 \\ \delta\Gamma_1 \end{pmatrix} =
 \begin{pmatrix} -\mathsf{w} \\ \mathfrak{s}'_b \\ 0 \\ -\Gamma_{\mathsf{w}} \end{pmatrix}.$
 
 =#
@@ -159,7 +159,7 @@ $\begin{bmatrix}
 0 & \mathfrak{e}_{k_1}^{T} & 0 & 0 & 0\\
 0 & \mathfrak{e}_{k_2}^{T} & 0 & 0 & 0\\
 0 & \mathfrak{f}_{0}^{T} & 0 & 1 & 1
-\end{bmatrix} \begin{pmatrix} \mathsf{s} \\ \tilde{\mathfrak{f}} \\ \mathfrak{s}_0 \\ \delta\Gamma_1 \\ \delta\Gamma_2 \end{pmatrix} =
+\end{bmatrix} \begin{pmatrix} \mathsf{s} \\ \tilde{\mathfrak{f}} \\ s_0 \\ \delta\Gamma_1 \\ \delta\Gamma_2 \end{pmatrix} =
 \begin{pmatrix} -\mathsf{w} \\ \mathfrak{s}'_b \\ 0 \\ 0 \\ -\Gamma_{\mathsf{w}} \end{pmatrix}.$
 =#
 

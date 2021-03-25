@@ -1,7 +1,7 @@
 #=
 # Basic potential flow problem
 
-This page introduces how to solve the basic potential flow problem in this package. We consider here a staggered, Cartesian grid with uniform cell size and of infinite extent. The basic (unbounded) potential flow problem is expressed as
+This part introduces how to solve the basic potential flow problem in this package. We consider here a staggered, Cartesian grid with uniform cell size and of infinite extent. The basic (unbounded) potential flow problem is expressed as
 
 $\mathsf{Ls} = -\mathsf{w},$
 
@@ -32,7 +32,7 @@ v = Vortex(0.0,0.0,1.0);
 # Now we can create a `VortexModel` using the grid and an array containing the point vortex.
 model = VortexModel(g,vortices=[v]);
 
-# The discrete streamfunction `s` is then obtained using `computeψ`
+# The discrete streamfunction `s` is then obtained using `computeψ`.
 s = computeψ(model);
 using Plots
 plot(s,g)
@@ -46,7 +46,7 @@ plot(q,g)
 To verify that the discretization technique of the Poisson equation is second-order accurate, we perform a mesh refinement analysis for a flow consisting of point vortices of random strenght that are randomly positioned on the lower-left quadrant of a square domain.
 =#
 
-# The error is calculated by comparing the numerically calculated streamfunction field with the exact solution for the streamfunction field. We therefore need a function to calculate the exact streamfunction
+# The error is calculated by comparing the numerically calculated streamfunction field with the exact solution for the streamfunction field. We therefore need a function to calculate the exact streamfunction.
 function ψVortex!(ψ::Nodes{Dual,nx,ny},vortex::Vortex,g::PhysicalGrid) where {nx,ny}
     x,y = coordinates(ψ,g)
     for i in 2:nx-1, j in 2:ny-1
@@ -127,9 +127,7 @@ T = 0:Δt:Tv;
 #=
 To step in time, we update the position of the $q$th vortex as $X^{n+1}_q = X^{n}_q + Δt Ẋ^{n}_q$ (forward Euler) in a for-loop. The flow velocity at the locations of the vortices $Ẋ$ is obtained with `computevortexvelocities`, which regularizes the vorticity to the grid, solves the potential flow system, and interpolates the velocities from the grid to the vortex locations as
 
-$
-\left(U_{q}, V_{q}\right)=\sum_{i, j} \mathsf{v}_{i j} d\left(\frac{\mathsf{x}_{i}-X_{q}}{\Delta x}\right)\left(\frac{\mathsf{y}_{j}-Y_{q}}{\Delta x}\right),
-$
+$\left(U_{q}, V_{q}\right)=\sum_{i, j} \mathsf{v}_{i j} d\left(\frac{\mathsf{x}_{i}-X_{q}}{\Delta x}\right)\left(\frac{\mathsf{y}_{j}-Y_{q}}{\Delta x}\right),$
 
 where $v$ is the velocity field on the nodes.
 =#

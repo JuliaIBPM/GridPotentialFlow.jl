@@ -1,13 +1,13 @@
 #=
 # Generalized edge conditions
 
-In the previous section, we demonstrated the means of annihilating the (nearly) singular behavior at edges on a discretized surface. In some cases, our desire is not to annihilate this behavior, but simply to keep it within some bounds. In the analytical treatment of potential flow problems, this objective is served by placing an inequality constraint on the edge suction parameter. That parameter is proportional to the coefficient on the bound vortex sheet strength's singularity, so in this discrete setting, in which we have extracted the singular part of $\mathfrak{f}$ in the form of $\mathfrak{f}_0$, we expect the suction parameter to be related to the value of $\tilde{\mathfrak{f}}$ at the edge. In fact, by simple comparison, it can be shown that
+In the previous part, we demonstrated the means of annihilating the (nearly) singular behavior at edges on a discretized surface. In some cases, our desire is not to annihilate this behavior, but simply to keep it within some bounds. In the analytical treatment of potential flow problems, this objective is served by placing an inequality constraint on the edge suction parameter. That parameter is proportional to the coefficient on the bound vortex sheet strength's singularity, so in this discrete setting, in which we have extracted the singular part of $\mathfrak{f}$ in the form of $\mathfrak{f}_0$, we expect the suction parameter to be related to the value of $\tilde{\mathfrak{f}}$ at the edge. In fact, by simple comparison, it can be shown that
 
 $\mathfrak{e}_{k}^T\tilde{\mathfrak{f}} = -\frac{2\pi c}{\Gamma_0} \sigma_{k}$
 
 for a flat plate of length $c$, where $\sigma_{k}$ is the suction parameter at the edge corresponding to point $k$.
 
-Let $\sigma_{k}^{\mathrm{min}}$ and $\sigma_{k}^{\mathrm{max}}$ denote the minimum and maximum tolerable values of $\sigma_{k}$ at edge $k$. We then seek to confine the suction parameter to the range $\sigma_{k}^{\mathrm{min}} \leq \sigma_{k} \leq \sigma_{k}^{\mathrm{max}}$. This generalized edge constraint is placed on the suction parameter of the intermediate sheet $\tilde{\mathfrak{f}}^*$. To avoid confusion, we will redefine the bounds based on this smooth part of the vortex sheet rather than $\sigma_{k}$ itself; for this, we define $f^{\mathrm{min}}_{k} = -\frac{2\pi c}{\Gamma_0} \sigma_{k}^{\mathrm{max}}$ and $f^{\mathrm{max}}_{k} = -\frac{2\pi c}{\Gamma_0} \sigma_{k}^{\mathrm{min}}$. Thus, we inspect whether the value $\mathfrak{e}_{k}^T\tilde{\mathfrak{f}}^*$ lies in the range
+Let $\sigma_{k}^{\mathrm{min}}$ and $\sigma_{k}^{\mathrm{max}}$ denote the minimum and maximum tolerable values of $\sigma_{k}$ at edge $k$. We then seek to confine the suction parameter to the range $\sigma_{k}^{\mathrm{min}} \leq \sigma_{k} \leq \sigma_{k}^{\mathrm{max}}$. This generalized edge constraint is placed on the suction parameter of the intermediate sheet $\tilde{\mathfrak{f}}^*$. To avoid confusion, we will redefine the bounds based on this smooth part of the vortex sheet rather than $\sigma_{k}$ itself; for this, we define $f^{\mathrm{min}}_{k} = -\frac{2\pi c}{\Gamma_0} \sigma_{k}^{\mathrm{max}}$ and $f^{\mathrm{max}}_{k} = -\frac{2\pi c}{\Gamma_0} \sigma_{k}^{\mathrm{min}} if $\Gamma_0$ is positive or $f^{\mathrm{max}}_{k} = -\frac{2\pi c}{\Gamma_0} \sigma_{k}^{\mathrm{max}}$ and $f^{\mathrm{min}}_{k} = -\frac{2\pi c}{\Gamma_0} \sigma_{k}^{\mathrm{min}} if $\Gamma_0$ is negative. Thus, we inspect whether the value $\mathfrak{e}_{k}^T\tilde{\mathfrak{f}}^*$ lies in the range
 
 $f^{\mathrm{min}}_{k} \leq \mathfrak{e}_{k}^T\tilde{\mathfrak{f}}^* \leq f^{\mathrm{max}}_{k}.$
 
@@ -36,8 +36,8 @@ Tr(plate)
 
 # We create three instances of `ModelParameters`, each one with a different suction parameter range. We only vary the suction parameter at the leading edge and keep it at zero (Kutta condition) at the trailing edge.
 modelparameters1 = ModelParameters(U∞=(1.0,0.0),σ=[SuctionParameter(0.0),SuctionParameter(0.0)])
-modelparameters2 = ModelParameters(U∞=(1.0,0.0),σ=[SuctionParameter(0.2),SuctionParameter(0.0)])
-modelparameters3 = ModelParameters(U∞=(1.0,0.0),σ=[SuctionParameter(0.4),SuctionParameter(0.0)]);
+modelparameters2 = ModelParameters(U∞=(1.0,0.0),σ=[SuctionParameter(0.05),SuctionParameter(0.0)])
+modelparameters3 = ModelParameters(U∞=(1.0,0.0),σ=[SuctionParameter(0.1),SuctionParameter(0.0)]);
 
 # The initial point vortices are the same.
 Δt = 2e-2
