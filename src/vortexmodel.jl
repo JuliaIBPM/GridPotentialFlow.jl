@@ -49,6 +49,7 @@ mutable struct VortexModel{Nb,Ne,isshedding}
     _edgedata::Edges{Primal}
     _bodydata::ScalarData
     _bodyvectordata::VectorData
+    _d::Nodes{Dual}
     _d_kvec::Vector{Nodes{Dual}}
     _ψ::Nodes{Dual}
     _f::ScalarData
@@ -77,6 +78,7 @@ function VortexModel(g::PhysicalGrid; bodies::Union{Vector{<:Body},BodyList}=Bod
     _edgedata = Edges(Primal,size(g))
     _bodydata = ScalarData(length(collect(bodies)[1]))
     _bodyvectordata = VectorData(length(collect(bodies)[1]))
+    _d = Nodes(Dual,size(g))
     _d_kvec = typeof(_nodedata)[]
     _ψ = Nodes(Dual,size(g))
     _f = ScalarData(length(collect(bodies)[1]))
@@ -114,7 +116,7 @@ function VortexModel(g::PhysicalGrid; bodies::Union{Vector{<:Body},BodyList}=Bod
         isshedding = false
     end
 
-    vortexmodel =  VortexModel{Nb,Ne,isshedding}(g, bodies, VortexList(deepcopy(vortices)), edges, system, _nodedata, _edgedata, _bodydata, _bodyvectordata, _d_kvec, _ψ, _f, _w, _ψb)
+    vortexmodel =  VortexModel{Nb,Ne,isshedding}(g, bodies, VortexList(deepcopy(vortices)), edges, system, _nodedata, _edgedata, _bodydata, _bodyvectordata, _d, _d_kvec, _ψ, _f, _w, _ψb)
 
     return vortexmodel
 end
@@ -165,7 +167,7 @@ end
 
 function _updatesystemd_kvec!(vortexmodel::VortexModel{Nb,Ne}, indices::Vector{Int}) where {Nb,Ne}
 
-    @unpack g, vortices, system, _nodedata, _d_kvec = vortexmodel
+    @unpack g, vortices, system, _d, _d_kvec = vortexmodel
 
     @assert length(vortices) >= Ne "not enough point vortices ($(length(vortices))) in vortexmodel to regularize $(Ne) edges"
 
@@ -175,8 +177,8 @@ function _updatesystemd_kvec!(vortexmodel::VortexModel{Nb,Ne}, indices::Vector{I
     for i in 1:Ne
         Γ .= 0
         Γ[indices[i]] = 1
-        H(_nodedata,Γ)
-        _d_kvec[i] .= _nodedata
+        H(_d,Γ)
+        _d_kvec[i] .= _d
     end
     setd_kvec!(system,_d_kvec)
     return _d_kvec
@@ -226,9 +228,7 @@ function computevortexvelocities(vortexmodel::VortexModel{Nb,Ne}; kwargs...) whe
 
     sol = solvesystem(vortexmodel, vortexmodel._w; kwargs...)
 
-    for k in 1:Ne
-        vortices[end-Ne+k].Γ = sol.δΓ_kvec[k]
-    end
+
 
     Ẋ_vortices = computevortexvelocities(vortexmodel,sol.ψ)
 
@@ -336,6 +336,11 @@ function solvesystem!(sol::UnsteadyRegularizedPotentialFlowSolution, vortexmodel
 
     _addψ∞!(sol.ψ,vortexmodel,parameters) # Add the uniform flow to the approximation to the continuous stream function field
 
+    # set the strengths of the last Ne vortices
+    for k in 1:Ne
+        vortexmodel.vortices[end-Ne+k].Γ = sol.δΓ_kvec[k]
+    end
+
     return sol
 end
 
@@ -383,10 +388,10 @@ end
 
 function _addψ∞!(ψ, vortexmodel::VortexModel, parameters)::Nodes{Dual}
 
-    xg,yg = coordinates(vortexmodel._nodedata,vortexmodel.g)
+    xg,yg = coordinates(ψ,vortexmodel.g)
     ψ .+= parameters.U∞[1].*yg' .- parameters.U∞[2].*xg
 
-    return vortexmodel._nodedata
+    return ψ
 end
 
 function _computeψboundaryconditions!(ψb::ScalarData, vortexmodel::VortexModel, parameters)
@@ -438,7 +443,8 @@ function computeimpulse(vortexmodel::VortexModel; parameters=ModelParameters())
     computew!(_nodedata,vortexmodel)
     # Solve system
     sol = solvesystem(vortexmodel, _nodedata, parameters=parameters)
-
+    # Compute vorticity field again, because now it can contain the vorticity of newly shedded vortices
+    computew!(_nodedata,vortexmodel)
     # Convert Ub into VectorData corresponding with the body points
     _computebodypointsvelocity!(_bodyvectordata,parameters.Ub,bodies)
 
