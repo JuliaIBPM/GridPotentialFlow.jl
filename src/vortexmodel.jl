@@ -18,6 +18,7 @@ export VortexModel, computeψ, computew, computew!, computevortexvelocities, _co
 # TODO: consider no deepcopy for new vortices in the methods and use deepcopy in the scripts instead
 # TODO: use Parameters.jl?
 # TODO: consider using StructArray for vortexlist
+# TODO: redo PotentialFlow.jl solution in example 6 with uniform flow instead of moving plate
 
 """
 $(TYPEDEF)
@@ -60,7 +61,7 @@ end
 """
 $(TYPEDSIGNATURES)
 
-Construct a vortex model using the given function.
+Constructs a vortex model using the given function.
 """
 function VortexModel(g::PhysicalGrid; bodies::Union{Vector{<:Body},BodyList}=BodyList(), vortices::Union{Vector{<:Vortex},VortexList}=VortexList(), edges::Vector{<:Integer}=Int[])
 

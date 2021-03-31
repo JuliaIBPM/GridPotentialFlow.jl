@@ -48,7 +48,7 @@ end
 """
 $(TYPEDSIGNATURES)
 
-Construct the parameters for a vortex model using the given function.
+Constructs the parameters for a vortex model using the given function.
 """
 function ModelParameters(;Ub=nothing, U∞=(0.0,0.0), Γb=nothing, σ=nothing)
     return ModelParameters(Ub,U∞,Γb,σ)
