@@ -1,5 +1,5 @@
 #=
-# Basic potential flow problem
+# 1. Basic potential flow problem
 
 This part introduces how to solve the basic potential flow problem in this package. We consider here a staggered, Cartesian grid with uniform cell size and of infinite extent. The basic (unbounded) potential flow problem is expressed as
 

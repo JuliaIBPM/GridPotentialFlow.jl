@@ -1,5 +1,5 @@
 #=
-# Generalized edge conditions
+# 5. Generalized edge conditions
 
 In the previous part, we demonstrated the means of annihilating the (nearly) singular behavior at edges on a discretized surface. In some cases, our desire is not to annihilate this behavior, but simply to keep it within some bounds. In the analytical treatment of potential flow problems, this objective is served by placing an inequality constraint on the edge suction parameter. That parameter is proportional to the coefficient on the bound vortex sheet strength's singularity, so in this discrete setting, in which we have extracted the singular part of $\mathfrak{f}$ in the form of $\mathfrak{f}_0$, we expect the suction parameter to be related to the value of $\tilde{\mathfrak{f}}$ at the edge. In fact, by simple comparison, it can be shown that
 

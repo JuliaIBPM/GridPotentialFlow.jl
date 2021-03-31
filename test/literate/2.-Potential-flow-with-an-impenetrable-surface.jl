@@ -1,5 +1,5 @@
 #=
-# Potential flow with an impenetrable surface
+# 2. Potential flow with an impenetrable surface
 
 This part introduces the treatment of rigid impenetrable surfaces in `GridPotentialFlow`. We can impose the no-penetration constraint by setting the fluid streamfunction equal to that of the surface $\mathfrak{s}_b$, up to a uniform value $s_0$. The discrete no-penetration constraint is thus
 
@@ -94,7 +94,8 @@ plot(sol.ψ,g)
 plot!(circle,fillcolor=:black,fillrange=0,fillalpha=0.25,linecolor=:black,linewidth=2)
 scatter!([vortex.x],[vortex.y],color=:black,markersize=2)
 
-# For this example, we can easily calculate the analytical bound vortex sheet strength $\gamma$ (see notebook) and compare it with our numerical solution $f$.
+# For this example, we can easily calculate the analytical bound vortex sheet strength $\gamma and compare it with our numerical solution $f$.
+#md # See the notebook in the examples folder for the analytical solution.
 plot(sol.f./Δs,label="f/ds")
 plot!(γ,label="gamma")
 

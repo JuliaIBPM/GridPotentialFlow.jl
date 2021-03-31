@@ -1,5 +1,5 @@
 #=
-# The Kutta condition
+# 4. The Kutta condition
 
 For surfaces that contain convex edges, the vortex sheet strength assumes a singular behavior in the vicinity of these edges, with a strength that depends on the interior angle of the edge: sharper edges have more singular behavior. In the discrete representation of the surface, edges are only approximately represented by the sudden disruptions of positions in clusters of adjacent points. The behavior in this discrete form is not quite singular, but the solution for the vortex sheet strength $\mathfrak{f}$ nonetheless exhibits a large and rapid change of amplitude.
 =#

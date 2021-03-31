@@ -1,5 +1,5 @@
 #=
-# Non-uniqueness and discrete circulation
+# 3. Non-uniqueness and discrete circulation
 
 There is no unique solution to the two-dimensional potential flow problem in the presence of an impenetrable surface, since one can choose any value for the uniform value $\mathfrak{s}_0$ and still enforce the no-penetration condition. Equivalently, we can specify any circulation about the body and still enforce this condition. For later use, let us write this uniform surface streamfunction as $\mathfrak{s}_0 = s_0 \mathfrak{1}$, where $s_0$ is a single scalar value and $\mathfrak{1}$ is a vector of ones on all surface points. The discrete circulation $\Gamma_b$ about the body is given by the sum of the bound vortex sheet data and can be written compactly as
 
