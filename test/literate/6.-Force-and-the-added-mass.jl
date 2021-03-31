@@ -262,7 +262,6 @@ T = 0.0:Δt:tf;
 #!md     push!(imp,Elements.impulse(sys))
 #!md end
 #!md force = -diff(imp)/Δt;
-#!md
 
 Δx = 0.01
 xlim = (-0.5,2)
@@ -367,11 +366,11 @@ m_{yx} & m_{yy}
 #md # g = PhysicalGrid(xlim,ylim,0.01)
 #md # Δx = cellsize(g);
 #md # ```
-#!md # Lx = 2.0
-#!md # xlim = (-Lx/2,Lx/2)
-#!md # ylim = (-Lx/2,Lx/2)
-#!md # g = PhysicalGrid(xlim,ylim,0.01)
-#!md # Δx = cellsize(g);
+#!md Lx = 2.0
+#!md xlim = (-Lx/2,Lx/2)
+#!md ylim = (-Lx/2,Lx/2)
+#!md g = PhysicalGrid(xlim,ylim,0.01)
+#!md Δx = cellsize(g);
 
 
 a = 0.5
@@ -436,6 +435,7 @@ bodies = fill(Circle(R,2*cellsize(g)),N);
 # We loop over the gap-to-radius ratios, position the bodies, and compute the ratio of the largest eigenvalue to the largest diagonal element of the translational added mass tensor. To position the bodies, we defined the method `rectangulararray` (see notebook in the examples folder).
 using Statistics: mean
 using LinearAlgebra: eigen
+#
 λoverMratios = zeros(length(GRratios))
 for idx in 1:length(GRratios)
     global bodies
