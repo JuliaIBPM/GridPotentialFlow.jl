@@ -356,7 +356,8 @@ The added mass for simple geometries can easiliy be calculated in an analytical 
 $\begin{bmatrix}
 m_{xx} & m_{xy} \\
 m_{yx} & m_{yy}
-\end{bmatrix}$.
+\end{bmatrix}.$
+
 =#
 
 #md # ```@setup 6.-Force-and-the-added-mass
@@ -454,10 +455,10 @@ for idx in 1:length(GRratios)
     λoverMratios[idx] = max_eig_value_coef/max_self_added_mass_coef
 end
 
-# The same ratios, obtained in an analytical way, are available in literature [1] and can be used to verify the numerical values.
+# The same ratios, obtained in an analytical way, are available in literature [^1] and can be used to verify the numerical values.
 nineRodArrayChen = [2.3637,2.2092,2.1007,2.0120,1.9350,1.8665,1.7494,1.6531,1.5732,1.5066,1.4508];
 plot(xlabel="GR",ylabel="λ/max(Mij)")
 plot!(GRratios,nineRodArrayChen,label="Chen1975")
 plot!(GRratios,λoverMratios,label="GridPotentialFlow.jl")
 
-# [1]: Chen, S. S. 1975 Vibration of nuclear fuel bundles. Nuclear Engineering and Design 35 (3), 399–422.
+# [^1]: Chen, S. S. (1975) "Vibration of nuclear fuel bundles," *Nuclear Engineering and Design*, 35 (3), 399-–422.

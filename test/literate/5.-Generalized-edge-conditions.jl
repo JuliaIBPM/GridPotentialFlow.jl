@@ -82,7 +82,7 @@ plot(plate,fillcolor=:black,fillrange=0,fillalpha=0.25,linecolor=:black,linewidt
 for i in 1:length(models)
     plot!((v->v.x).(models[i].vortices.list[4:2:end]),(v->v.y).(models[i].vortices.list[4:2:end]),color=colors[i],marker=:circle,markersize=2)
     plot!((v->v.x).(models[i].vortices.list[3:2:end]),(v->v.y).(models[i].vortices.list[3:2:end]),color=colors[i],marker=:circle,markersize=2)
-    scatter!((v->v.x).(models[i].vortices.list[1:2]),(v->v.y).(models[i].vortices.list[1:2]),color=colors[i],marker=:circle,markersize=2,label="σLE=$(σLE_list[i])"))
+    scatter!((v->v.x).(models[i].vortices.list[1:2]),(v->v.y).(models[i].vortices.list[1:2]),color=colors[i],marker=:circle,markersize=2,label="σLE=$(σLE_list[i])")
 end
 plot!()
 
