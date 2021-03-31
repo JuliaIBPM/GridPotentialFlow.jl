@@ -7,7 +7,7 @@ $\mathfrak{e}_{k}^T\tilde{\mathfrak{f}} = -\frac{2\pi c}{\Gamma_0} \sigma_{k}$
 
 for a flat plate of length $c$, where $\sigma_{k}$ is the suction parameter at the edge corresponding to point $k$.
 
-Let $\sigma_{k}^{\mathrm{min}}$ and $\sigma_{k}^{\mathrm{max}}$ denote the minimum and maximum tolerable values of $\sigma_{k}$ at edge $k$. We then seek to confine the suction parameter to the range $\sigma_{k}^{\mathrm{min}} \leq \sigma_{k} \leq \sigma_{k}^{\mathrm{max}}$. This generalized edge constraint is placed on the suction parameter of the intermediate sheet $\tilde{\mathfrak{f}}^*$. To avoid confusion, we will redefine the bounds based on this smooth part of the vortex sheet rather than $\sigma_{k}$ itself; for this, we define $f^{\mathrm{min}}_{k} = -\frac{2\pi c}{\Gamma_0} \sigma_{k}^{\mathrm{max}}$ and $f^{\mathrm{max}}_{k} = -\frac{2\pi c}{\Gamma_0} \sigma_{k}^{\mathrm{min}} if $\Gamma_0$ is positive or $f^{\mathrm{max}}_{k} = -\frac{2\pi c}{\Gamma_0} \sigma_{k}^{\mathrm{max}}$ and $f^{\mathrm{min}}_{k} = -\frac{2\pi c}{\Gamma_0} \sigma_{k}^{\mathrm{min}} if $\Gamma_0$ is negative. Thus, we inspect whether the value $\mathfrak{e}_{k}^T\tilde{\mathfrak{f}}^*$ lies in the range
+Let $\sigma_{k}^{\mathrm{min}}$ and $\sigma_{k}^{\mathrm{max}}$ denote the minimum and maximum tolerable values of $\sigma_{k}$ at edge $k$. We then seek to confine the suction parameter to the range $\sigma_{k}^{\mathrm{min}} \leq \sigma_{k} \leq \sigma_{k}^{\mathrm{max}}$. This generalized edge constraint is placed on the suction parameter of the intermediate sheet $\tilde{\mathfrak{f}}^*$. To avoid confusion, we will redefine the bounds based on this smooth part of the vortex sheet rather than $\sigma_{k}$ itself; for this, we define $f^{\mathrm{min}}_{k} = -\frac{2\pi c}{\Gamma_0} \sigma_{k}^{\mathrm{max}}$ and $f^{\mathrm{max}}_{k} = -\frac{2\pi c}{\Gamma_0} \sigma_{k}^{\mathrm{min}}$ if $\Gamma_0$ is positive or $f^{\mathrm{max}}_{k} = -\frac{2\pi c}{\Gamma_0} \sigma_{k}^{\mathrm{max}}$ and $f^{\mathrm{min}}_{k} = -\frac{2\pi c}{\Gamma_0} \sigma_{k}^{\mathrm{min}}$ if $\Gamma_0$ is negative. Thus, we inspect whether the value $\mathfrak{e}_{k}^T\tilde{\mathfrak{f}}^*$ lies in the range
 
 $f^{\mathrm{min}}_{k} \leq \mathfrak{e}_{k}^T\tilde{\mathfrak{f}}^* \leq f^{\mathrm{max}}_{k}.$
 
@@ -35,9 +35,10 @@ Tr(plate)
 Δs = dlengthmid(plate);
 
 # We create three instances of `ModelParameters`, each one with a different suction parameter range. We only vary the suction parameter at the leading edge and keep it at zero (Kutta condition) at the trailing edge.
-modelparameters1 = ModelParameters(U∞=(1.0,0.0),σ=[SuctionParameter(0.0),SuctionParameter(0.0)])
-modelparameters2 = ModelParameters(U∞=(1.0,0.0),σ=[SuctionParameter(0.05),SuctionParameter(0.0)])
-modelparameters3 = ModelParameters(U∞=(1.0,0.0),σ=[SuctionParameter(0.1),SuctionParameter(0.0)]);
+σLE_list = [0.0,0.05,0.1];
+modelparameters1 = ModelParameters(U∞=(1.0,0.0),σ=[SuctionParameter(σLE_list[1]),SuctionParameter(0.0)])
+modelparameters2 = ModelParameters(U∞=(1.0,0.0),σ=[SuctionParameter(σLE_list[2]),SuctionParameter(0.0)])
+modelparameters3 = ModelParameters(U∞=(1.0,0.0),σ=[SuctionParameter(σLE_list[3]),SuctionParameter(0.0)]);
 
 # The initial point vortices are the same.
 Δt = 2e-2
@@ -64,7 +65,7 @@ modelparameters = [modelparameters1,modelparameters2,modelparameters3]
 # Now we can advance the solution in time.
 T = 0:Δt:0.2
 for t in T
-    for i in 1:length(models)
+    for i in 1:length(σLE_list)
         Ẋ = computevortexvelocities(models[i],parameters=modelparameters[i])
         vortices = deepcopy(models[i].vortices.list)
         updateposition!.(vortices,Ẋ.u,Ẋ.v,Δt)
@@ -77,19 +78,19 @@ end
 
 # By plotting the positions of the point vortices emanating from the leading edge, we see that as $\sigma_{k}^{\mathrm{max}}$ increases, the stream of point vortices is swept back from the edge.
 colors = [:red,:blue,:green];
-plot(plate,fillcolor=:black,fillrange=0,fillalpha=0.25,linecolor=:black,linewidth=2)
+plot(plate,fillcolor=:black,fillrange=0,fillalpha=0.25,linecolor=:black,linewidth=2,xlabel="x",ylabel="y")
 for i in 1:length(models)
     plot!((v->v.x).(models[i].vortices.list[4:2:end]),(v->v.y).(models[i].vortices.list[4:2:end]),color=colors[i],marker=:circle,markersize=2)
     plot!((v->v.x).(models[i].vortices.list[3:2:end]),(v->v.y).(models[i].vortices.list[3:2:end]),color=colors[i],marker=:circle,markersize=2)
-    scatter!((v->v.x).(models[i].vortices.list[1:2]),(v->v.y).(models[i].vortices.list[1:2]),color=colors[i],marker=:circle,markersize=2)
+    scatter!((v->v.x).(models[i].vortices.list[1:2]),(v->v.y).(models[i].vortices.list[1:2]),color=colors[i],marker=:circle,markersize=2,label="σLE=$(σLE_list[i])"))
 end
 plot!()
 
 #
-plot()
-for i in 1:length(models)
+plot(xlabel="body point index",ylabel="f̃")
+for i in 1:length(σLE_list)
     w = computew(models[i])
     sol = solvesystem(models[i],w,parameters=modelparameters[i]);
-    plot!(sol.f./models[i].system.f₀,linecolor=colors[i])
+    plot!(sol.f./models[i].system.f₀,linecolor=colors[i],label="σLE=$(σLE_list[i])")
 end
 plot!()

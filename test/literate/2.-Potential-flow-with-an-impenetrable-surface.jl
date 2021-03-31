@@ -92,11 +92,11 @@ sol = solvesystem(model,w);
 # We can then easily retrieve the streamfunction and the bound vortex sheet strength from the fields of the solution variable.
 plot(sol.ψ,g)
 plot!(circle,fillcolor=:black,fillrange=0,fillalpha=0.25,linecolor=:black,linewidth=2)
-scatter!([vortex.x],[vortex.y],color=:black,markersize=2)
+scatter!([vortex.x],[vortex.y],color=:black,markersize=2,xlabel="x",ylabel="y")
 
 # For this example, we can easily calculate the analytical bound vortex sheet strength $\gamma and compare it with our numerical solution $f$.
 #md # See the notebook in the examples folder for the analytical solution.
-plot(sol.f./Δs,label="f/ds")
+plot(sol.f./Δs,label="f/ds",xlabel="body point index")
 plot!(γ,label="gamma")
 
 #jl @testset "Vortex near cylinder" begin
@@ -147,8 +147,8 @@ sol = solvesystem(model,w,parameters=modelparameters);
 #!md # γ = 2*sin.(θ);
 
 plot(sol.ψ,g)
-plot!(circle,fillcolor=:black,fillrange=0,fillalpha=0.25,linecolor=:black,linewidth=2)
+plot!(circle,fillcolor=:black,fillrange=0,fillalpha=0.25,linecolor=:black,linewidth=2,xlabel="x",ylabel="y")
 
 # Again, we can compare the discrete bound vortex sheet strength with the analytical vortex sheet strength.
-plot(sol.f./Δs,label="f/ds")
+plot(sol.f./Δs,label="f/ds",xlabel="body point index")
 plot!(γ,label="gamma")

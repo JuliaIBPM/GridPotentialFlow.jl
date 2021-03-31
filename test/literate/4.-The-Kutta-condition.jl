@@ -33,10 +33,10 @@ sol = solvesystem(model,w,parameters=modelparameters);
 
 # By plotting many streamlines, we see how flow accelerates as it tries to make its way around the sharp edges of the flat plate. In the continuous case, the velocity field would be singular at the edges.
 plot(sol.ψ,g,levels=60);
-plot!(plate,linecolor=:black,linewidth=2)
+plot!(plate,linecolor=:black,linewidth=2,xlabel="x",ylabel="y")
 
 # The continous vortex sheet strength shows similar singularities at the edges, and also in our discrete case, vortex sheet strength the indeed assumes an approximate singular behavior near those edges.
-plot(sol.f)
+plot(sol.f,xlabel="body point index",ylabel="f",legend=false)
 
 #=
 If we seek to eliminate this behavior, we must first have some means of exposing it. In fact, for any discretized surface, the essence of this nearly-singular behavior lies in the previously defined vector $\mathfrak{f}_0$, and all other bound vortex sheets associated with the same surface share the same nearly-singular behavior. Thus, we will use a multiplicative decomposition of the vortex sheet strength:
@@ -54,7 +54,7 @@ f₀ = model.system.S.S⁻¹*ones
 plot(f₀)
 
 # Then we can plot the smooth $\tilde{\mathfrak{f}}$ as follows.
-plot((sol.f./f₀))
+plot(sol.f./f₀,xlabel="body point index",ylabel="f̃",legend=false)
 
 #=
 ## Using the Kutta condition in a steady-state problem
@@ -89,10 +89,10 @@ sol = solvesystem(model,w,parameters=modelparameters);
 
 # When there are no vortices present in the model, the package solves the above saddle point system and the solution is the steady state solution. Inspection of the streamlines shows that flow now indeed leaves the trailing edge smoothly.
 plot(sol.ψ,g);
-plot!(plate,linecolor=:black,linewidth=2)
+plot!(plate,linecolor=:black,linewidth=2,xlabel="x",ylabel="y")
 
 # By plotting the vortex sheet strength, we can see that by constraining the trailing edge point of $\tilde{\mathfrak{f}}$, its whole distribution is shifted upward compared to the unregularized case such that the last value equals zero.
-plot(plot(sol.f),plot(sol.f./f₀),size=[800,300])
+plot(plot(sol.f,xlabel="body point index",ylabel="f",legend=false),plot(sol.f./f₀,xlabel="body point index",ylabel="f̃",legend=false),size=[800,300])
 
 #=
 ## Using the Kutta condition to set a new vortex element
@@ -139,10 +139,10 @@ w = computew(model)
 sol = solvesystem(model,w,parameters=modelparameters);
 plot(sol.ψ,g);
 plot!(plate,linecolor=:black,linewidth=2)
-scatter!([vTE.x],[vTE.y],color=:black,markersize=2)
+scatter!([vTE.x],[vTE.y],color=:black,markersize=2,xlabel="x",ylabel="y")
 
 # Because of the proximity of the point vortex to the flat plate, $\tilde{\mathfrak{f}}$ exhibits a quick variation in its value at the surface points that lie closest to the point vortex. The value at the trailing edge point itself is still constrained to zero.
-plot(plot(sol.f),plot(sol.f./f₀),size=[800,300])
+plot(plot(sol.f,xlabel="body point index",ylabel="f",legend=false),plot(sol.f./f₀,xlabel="body point index",ylabel="f̃",legend=false),size=[800,300])
 
 #=
 ## Applying more than one Kutta condition on a body
@@ -175,8 +175,8 @@ w = computew(model)
 sol = solvesystem(model,w,parameters=modelparameters);
 plot(sol.ψ,g);
 plot!(plate,linecolor=:black,linewidth=2)
-scatter!([vLE.x,vTE.x],[vLE.y,vTE.y],color=:black,markersize=2)
+scatter!([vLE.x,vTE.x],[vLE.y,vTE.y],color=:black,markersize=2,xlabel="x",ylabel="y")
 
 #
 
-plot(plot(sol.f),plot(sol.f./f₀),size=[800,300])
+plot(plot(sol.f,xlabel="body point index",ylabel="f",legend=false),plot(sol.f./f₀,xlabel="body point index",ylabel="f̃",legend=false),size=[800,300])

@@ -111,15 +111,15 @@ for t in T
 end
 
 # When we compare the trajectories and impulse history, the numerical and anaylytical solution should match closely, which is indeed the case.
-plot(circle,fillcolor=:black,fillrange=0,fillalpha=0.25,linecolor=:black,linewidth=2)
+plot(circle,fillcolor=:black,fillrange=0,fillalpha=0.25,linecolor=:black,linewidth=2,xlabel="x",ylabel="y")
 scatter!((v->v.x).(model.vortices.list),(v->v.y).(model.vortices.list),color=:red)
-plot!(x_trajectory,y_trajectory_upper,linecolor=:red)
-plot!(x_trajectory,y_trajectory_lower,linecolor=:red)
-plot!((X->X[1]).(X_hist),(X->X[3]).(X_hist),color=:blue,linestyle=:dash)
-plot!((X->X[2]).(X_hist),(X->X[4]).(X_hist),color=:blue,linestyle=:dash)
+plot!(x_trajectory,y_trajectory_upper,linecolor=:red,label="exact")
+plot!(x_trajectory,y_trajectory_lower,linecolor=:red,label="")
+plot!((X->X[1]).(X_hist),(X->X[3]).(X_hist),color=:blue,linestyle=:dash,label="simulated")
+plot!((X->X[2]).(X_hist),(X->X[4]).(X_hist),color=:blue,linestyle=:dash,label="")
 
 #
-plot(x_trajectory,Px_exact,color=:red,label="exact")
+plot(x_trajectory,Px_exact,color=:red,label="exact",xlabel="x",ylabel="Px")
 plot!((X->X[1]).(X_hist),Px_numerical_hist,color=:blue,linestyle=:dash,label="simulated")
 
 #=
@@ -330,19 +330,19 @@ Fy_hist = -diff(Py_hist)/Δt;
 
 # We can now compare the positions of the point vortices by shifting the `PotentialFlow.jl` solution by `-tf*ċ` such that the origin of the frame of reference coincides with the center plate. Superimposingt the `GridPotentialFlow.jl` solution then shows that the positions of the point vortices agree very well.
 
-plot(plate,fillcolor=:black,fillrange=0,fillalpha=0.25,linecolor=:black,linewidth=2,xlim=xlim,ylim=ylim)
-scatter!(real.((v->v.z).(sys[2])).-tf*ċ,imag.((v->v.z).(sys[2])),color=:red,markersize=4)
-scatter!((v->v.x).(model.vortices.list),(v->v.y).(model.vortices.list),color=:blue,markersize=2)
+plot(plate,fillcolor=:black,fillrange=0,fillalpha=0.25,linecolor=:black,linewidth=2,xlim=xlim,ylim=ylim,xlabel="x",ylabel="y")
+scatter!(real.((v->v.z).(sys[2])).-tf*ċ,imag.((v->v.z).(sys[2])),color=:red,markersize=4,label="PotentialFlow.jl")
+scatter!((v->v.x).(model.vortices.list),(v->v.y).(model.vortices.list),color=:blue,markersize=2,label="GridPotentialFlow.jl")
 
 # The vertical impulse and the vertical force (lift) can also be compared and show good agreement as well.
-
-plot(T,Py_hist,color=:blue)
-plot!(T,imag.(imp),color=:red)
+plot(xlabel="t",ylabel="Py")
+plot!(T,Py_hist,color=:blue,label="PotentialFlow.jl")
+plot!(T,imag.(imp),color=:red,label="GridPotentialFlow.jl")
 
 #
-
-plot(T[2:end],Fy_hist,color=:blue)
-plot!(T[2:end],imag.(force),color=:red)
+plot(xlabel="t",ylabel="Fy")
+plot!(T[2:end],Fy_hist,color=:blue,label="PotentialFlow.jl")
+plot!(T[2:end],imag.(force),color=:red,label="GridPotentialFlow.jl")
 
 #=
 ## Added mass
@@ -456,6 +456,8 @@ end
 
 # The same ratios, obtained in an analytical way, are available in literature [1] and can be used to verify the numerical values.
 nineRodArrayChen = [2.3637,2.2092,2.1007,2.0120,1.9350,1.8665,1.7494,1.6531,1.5732,1.5066,1.4508];
-plot(GRratios,[nineRodArrayChen,λoverMratios])
+plot(xlabel="GR",ylabel="λ/max(Mij)")
+plot!(GRratios,nineRodArrayChen,label="Chen1975")
+plot!(GRratios,λoverMratios,label="GridPotentialFlow.jl")
 
 # [1]: Chen, S. S. 1975 Vibration of nuclear fuel bundles. Nuclear Engineering and Design 35 (3), 399–422.

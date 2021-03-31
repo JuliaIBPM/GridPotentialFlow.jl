@@ -76,7 +76,8 @@ g = PhysicalGrid(xlim,ylim,Δx);
 
 # Let us consider four cylinders with aspect ratios 1, 2, 3, and infinity. An ellipse with infinite aspect ratio is a flat plate, so we construct that case separately.
 a = Lx/4 # semi-major axis
-ellipses = [Ellipse(a,a/AR,Δx) for AR in [1.0,2.0,3.0]]
+AR_list = [1.0,2.0,3.0]
+ellipses = [Ellipse(a,a/AR,Δx) for AR in AR_list]
 bodies = Body[]
 push!(bodies,[SplinedBody(hcat(body.x,body.y),3*cellsize(g)) for body in ellipses]...)
 push!(bodies,Plate(2*a,3*Δx));
@@ -85,7 +86,7 @@ plot()
 for i in 1:length(bodies)
     plot!(bodies[i],fillrange=0,fillalpha=0.0,linecolor=colors[i],linewidth=2)
 end
-plot!(xlim=xlim,ylim=ylim)
+plot!(xlim=xlim,ylim=ylim,xlabel="x",ylabel="y")
 
 # To compute $\mathfrak{f}_0$, we have to access the internal fields of the associated `system` of our vortexmodel.
 f₀_list = []
@@ -102,8 +103,8 @@ end
 append!(f₀_list[end],reverse!(f₀_list[end]));
 Δs_plate = dlengthmid(bodies[end]);
 append!(Δs_plate,reverse!(Δs_plate));
-plot(ylim=(-2,0),legend=false)
+plot(ylim=(-2,0),xlabel="p/N",title="f₀ for ellipses of different aspect ratios")
 for i in 1:length(bodies)-1
-    plot!((1:length(f₀_list[i]))/length(f₀_list[i]),f₀_list[i]./dlength(bodies[i]),linecolor=colors[i])
+    plot!((1:length(f₀_list[i]))/length(f₀_list[i]),f₀_list[i]./dlength(bodies[i]),linecolor=colors[i],label="AR=$(AR_list[i])")
 end
-plot!((1:length(f₀_list[end]))/length(f₀_list[end]),0.5*f₀_list[end]./Δs_plate,linecolor=colors[end])
+plot!((1:length(f₀_list[end]))/length(f₀_list[end]),0.5*f₀_list[end]./Δs_plate,linecolor=colors[end],label="AR=inf")

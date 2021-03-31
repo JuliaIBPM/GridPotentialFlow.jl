@@ -35,11 +35,11 @@ model = VortexModel(g,vortices=[v]);
 # The discrete streamfunction `s` is then obtained using `computeψ`.
 s = computeψ(model);
 using Plots
-plot(s,g)
+plot(s,g,xlabel="x",ylabel="y")
 
 # The function `computeψ` returns a `Nodes` array. If we want to perform differential calculus operations this data, we can use the methods of the  `CartesianGrids` package. For example, we can easily obtain the velocity field from the streamfunction field using the `curl` operation.
 q = curl(s);
-plot(q,g)
+plot(q,g,xlabel="x",ylabel="y")
 
 #=
 ## Accuracy of the discretized Poisson equation
@@ -145,7 +145,7 @@ end
 ψ = computeψ(model);
 plot(ψ,g)
 scatter!((v->v.x).(model.vortices.list),(v->v.y).(model.vortices.list),color=:red)
-plot!((X->X[1]).(X_hist),(X->X[3]).(X_hist),color=:blue)
+plot!((X->X[1]).(X_hist),(X->X[3]).(X_hist),color=:blue,xlabel="x",ylabel="y")
 
 #jl @testset "Corotating point vortices" begin
 #jl     @test isapprox(X_hist[end][1], 0.5; atol = 1e-1)
