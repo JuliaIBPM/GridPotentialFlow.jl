@@ -2,6 +2,8 @@
 
 *A set of tools to solve potential flows past bodies on a Cartesian grid.*
 
+[![Build Status](https://github.com/JuliaIBPM/GridPotentialFlow.jl/workflows/CI/badge.svg)](https://github.com/JuliaIBPM/GridPotentialFlow.jl/actions)
+[![Coverage](https://codecov.io/gh/JuliaIBPM/GridPotentialFlow.jl/branch/master/graph/badge.svg)](https://codecov.io/gh/JuliaIBPM/GridPotentialFlow.jl)
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.4549940.svg)](https://doi.org/10.5281/zenodo.4549940)
 
 The objective of this package is to allow easy setup and fast simulation of potential
