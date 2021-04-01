@@ -19,6 +19,7 @@ export VortexModel, computeψ, computew, computew!, computevortexvelocities, _co
 # TODO: use Parameters.jl?
 # TODO: consider using StructArray for vortexlist
 # TODO: redo PotentialFlow.jl solution in example 6 with uniform flow instead of moving plate
+# TODO: match names of Ne and Nk
 
 """
 $(TYPEDEF)
