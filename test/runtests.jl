@@ -2,7 +2,7 @@ using GridPotentialFlow
 using Test
 using Literate
 
-const GROUP = get(ENV, "GROUP", "All")
+const GROUP = get(ENV, "GROUP", "Notebooks")
 
 notebookdir = "../examples"
 docdir = "../docs/src/manual"
@@ -29,7 +29,7 @@ if GROUP == "All" || GROUP == "Notebooks"
   end
 end
 
-if GROUP == "All" || "Documentation"
+if GROUP == "All" || GROUP == "Documentation"
   for (root, dirs, files) in walkdir(litdir)
     for file in files
       endswith(file,".jl") && Literate.markdown(joinpath(root, file),docdir)

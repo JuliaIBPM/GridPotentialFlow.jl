@@ -105,8 +105,8 @@ function ldiv!(sol::SteadyRegularizedPotentialFlowSolution{T,TU,TF}, sys::Regula
     # eq 2.37 + accounting for generalized edge conditions
     f .= mean(P_kvec)*f + _TF_ones*mean(f̃lim_kvec) # Represents f̃
     # eq 2.38
-    ψ .= reshape(_w_buf,:) .+ S̃.B₁ᵀ*f
-    ψ .= reshape(-S̃.A⁻¹*ψ,size(ψ))
+    ψ .= reshape(reshape(_w_buf,:) .+ S̃.B₁ᵀ*f,size(ψ))
+    ψ .= reshape(-S̃.A⁻¹*reshape(ψ,:),size(ψ))
     f .*= f₀
 
     return sol
@@ -146,11 +146,11 @@ function ldiv!(sol::UnsteadyRegularizedPotentialFlowSolution{T,TU,TF}, sys::Regu
     # Add the bound vortex sheet strength induced by the shedded vortices to the bound vortex sheet strength induced by w and the boundary conditions
     f .= f .+ sum(δΓ_kvec.*f̃_kvec)
     # eq 2.57 + accounting for generalized edge conditions
-    ψ₀ .= mean(e_kvec[k_sheddingedges])'*f .- mean(f̃lim_kvec[k_sheddingedges])
+    ψ₀ .= mean(e_kvec[k_sheddingedges])'*f .- mean(activef̃lim_kvec[k_sheddingedges])
     # eq 2.58 + accounting for generalized edge conditions
-    f .= mean(P_kvec[k_sheddingedges])*f + _TF_ones*mean(f̃lim_kvec[k_sheddingedges]) # Represents f̃
-    ψ .= reshape(_w_buf,:) .+ S̃.B₁ᵀ*f
-    ψ .= reshape(-S̃.A⁻¹*ψ,size(ψ))
+    f .= mean(P_kvec[k_sheddingedges])*f + _TF_ones*mean(activef̃lim_kvec[k_sheddingedges]) # Represents f̃
+    ψ .= reshape(reshape(_w_buf,:) .+ S̃.B₁ᵀ*f,size(ψ))
+    ψ .= reshape(-S̃.A⁻¹*reshape(ψ,:),size(ψ))
     # eq 2.24
     f .*= f₀
 
