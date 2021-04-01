@@ -1,22 +1,27 @@
 export Vortex, updateposition!
 
 """
-    Vortex
+$(TYPEDEF)
 
-Vortex type, with x-position `x`, y-position `y`, and strength `Γ`.
+Defines a point vortex with x-position `x`, y-position `y`, and strength `Γ`.
+
+# Fields
+
+$(TYPEDFIELDS)
 """
 mutable struct Vortex
-    # Position
+    """x: x-coordinate of the vortex position."""
     x::Float64
+    """y: y-coordinate of the vortex position."""
     y::Float64
-    # Strength
+    """Γ: strength of the vortex. Positive if counter-clockwise."""
     Γ::Float64
 end
 
 """
-    updateposition!(vortex::Vortex,u::Real,v::Real,Δt::Real)
+$(TYPEDSIGNATURES)
 
-Update the `x` and `y` fields of `vortex`, given the x-velocity `u`, y-velocity `v`, and timestep `Δt`.
+Updates the `x` and `y` fields of `vortex`, given the x-velocity `u`, y-velocity `v`, and timestep `Δt`.
 """
 function updateposition!(vortex::Vortex,u::Real,v::Real,Δt::Real)
     vortex.x += Δt*u
@@ -24,8 +29,13 @@ function updateposition!(vortex::Vortex,u::Real,v::Real,Δt::Real)
     return vortex
 end
 
-function setposition!(vortex::Vortex,x::Real,y::Real)
-    vortex.x = x
-    vortex.y = y
+"""
+$(TYPEDSIGNATURES)
+
+Sets the `x` and `y` fields of `vortex` to the `xnew` and `ynew`, respectively.
+"""
+function setposition!(vortex::Vortex,xnew::Real,ynew::Real)
+    vortex.x = xnew
+    vortex.y = ynew
     return vortex
 end

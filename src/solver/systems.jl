@@ -38,6 +38,7 @@ struct RegularizedPotentialFlowSystem{Nb,Nk,T,TU,TF,TE} <: PotentialFlowSystem
         _TF_zeros .= 0
         _TF_ones = TF()
         _TF_ones .= 1
+        # _TFTFt_ones = _TF_ones*_TF_ones'
         new{1,length(e_kvec),T,TU,TF,TE}(S̃, f₀, e_kvec, d_kvec, f̃_kvec, P_kvec, _TF_zeros, _TF_ones, _w_buf)
     end
 
@@ -87,9 +88,9 @@ function ldiv!(sol::UnregularizedPotentialFlowSolution{T,TU,TF}, sys::Unregulari
     return sol
 end
 
-function ldiv!(sol::SteadyRegularizedPotentialFlowSolution{T,TU,TF}, sys::RegularizedPotentialFlowSystem{Nb,Nk,T,TU,TF,TE}, rhs::SteadyRegularizedPotentialFlowRHS{TU,TF,TSP}) where {Nb,Nk,T,TU,TF,TE,TSP}
+function ldiv!(sol::SteadyRegularizedPotentialFlowSolution{T,TU,TF}, sys::RegularizedPotentialFlowSystem{Nb,Nk,T,TU,TF,TE}, rhs::SteadyRegularizedPotentialFlowRHS{TU,TF}) where {Nb,Nk,T,TU,TF,TE}
 
-    @unpack S̃, f₀, e_kvec, P_kvec, _TF_zeros, _TF_ones = sys
+    @unpack S̃, f₀, e_kvec, P_kvec, _TF_zeros, _TF_ones, _w_buf = sys
     @unpack ψ, f, ψ₀ = sol
     @unpack w, ψb, f̃lim_kvec = rhs
 
@@ -104,15 +105,14 @@ function ldiv!(sol::SteadyRegularizedPotentialFlowSolution{T,TU,TF}, sys::Regula
     # eq 2.37 + accounting for generalized edge conditions
     f .= mean(P_kvec)*f + _TF_ones*mean(f̃lim_kvec) # Represents f̃
     # eq 2.38
-    ψ .= reshape(_w_buf,:) .+ S̃.B₁ᵀ*f
-    ψ .= reshape(-S̃.A⁻¹*ψ,size(ψ))
+    ψ .= reshape(reshape(_w_buf,:) .+ S̃.B₁ᵀ*f,size(ψ))
+    ψ .= reshape(-S̃.A⁻¹*reshape(ψ,:),size(ψ))
     f .*= f₀
 
     return sol
 end
 
-# TODO: add loop to correct vortex strengths
-function ldiv!(sol::UnsteadyRegularizedPotentialFlowSolution{T,TU,TF}, sys::RegularizedPotentialFlowSystem{Nb,Nk,T,TU,TF,TE}, rhs::UnsteadyRegularizedPotentialFlowRHS{TU,TF,TSP}) where {Nb,Nk,T,TU,TF,TE,TSP}
+function ldiv!(sol::UnsteadyRegularizedPotentialFlowSolution{T,TU,TF}, sys::RegularizedPotentialFlowSystem{Nb,Nk,T,TU,TF,TE}, rhs::UnsteadyRegularizedPotentialFlowRHS{TU,TF}) where {Nb,Nk,T,TU,TF,TE}
 
     @unpack S̃, f₀, e_kvec, d_kvec, f̃_kvec, P_kvec, _TF_zeros, _TF_ones, _w_buf = sys
     @unpack ψ, f, ψ₀, δΓ_kvec = sol
@@ -146,11 +146,11 @@ function ldiv!(sol::UnsteadyRegularizedPotentialFlowSolution{T,TU,TF}, sys::Regu
     # Add the bound vortex sheet strength induced by the shedded vortices to the bound vortex sheet strength induced by w and the boundary conditions
     f .= f .+ sum(δΓ_kvec.*f̃_kvec)
     # eq 2.57 + accounting for generalized edge conditions
-    ψ₀ .= mean(e_kvec[k_sheddingedges])'*f .- mean(f̃lim_kvec[k_sheddingedges])
+    ψ₀ .= mean(e_kvec[k_sheddingedges])'*f .- mean(activef̃lim_kvec[k_sheddingedges])
     # eq 2.58 + accounting for generalized edge conditions
-    f .= mean(P_kvec[k_sheddingedges])*f + _TF_ones*mean(f̃lim_kvec[k_sheddingedges]) # Represents f̃
-    ψ .= reshape(_w_buf,:) .+ S̃.B₁ᵀ*f
-    ψ .= reshape(-S̃.A⁻¹*ψ,size(ψ))
+    f .= mean(P_kvec[k_sheddingedges])*f + _TF_ones*mean(activef̃lim_kvec[k_sheddingedges]) # Represents f̃
+    ψ .= reshape(reshape(_w_buf,:) .+ S̃.B₁ᵀ*f,size(ψ))
+    ψ .= reshape(-S̃.A⁻¹*reshape(ψ,:),size(ψ))
     # eq 2.24
     f .*= f₀
 
@@ -163,13 +163,13 @@ function (\)(sys::UnregularizedPotentialFlowSystem, rhs::UnregularizedPotentialF
     return sol
 end
 
-function (\)(sys::RegularizedPotentialFlowSystem{Nb,Nk,T,TU,TF,TE}, rhs::SteadyRegularizedPotentialFlowRHS{TU,TF,TSP}) where {Nb,Nk,T,TU,TF,TE,TSP}
+function (\)(sys::RegularizedPotentialFlowSystem{Nb,Nk,T,TU,TF,TE}, rhs::SteadyRegularizedPotentialFlowRHS{TU,TF}) where {Nb,Nk,T,TU,TF,TE}
     sol = SteadyRegularizedPotentialFlowSolution(TU(),TF(),zeros(T,Nb))
     ldiv!(sol,sys,rhs)
     return sol
 end
 
-function (\)(sys::RegularizedPotentialFlowSystem{Nb,Nk,T,TU,TF,TE}, rhs::UnsteadyRegularizedPotentialFlowRHS{TU,TF,TSP}) where {Nb,Nk,T,TU,TF,TE,TSP}
+function (\)(sys::RegularizedPotentialFlowSystem{Nb,Nk,T,TU,TF,TE}, rhs::UnsteadyRegularizedPotentialFlowRHS{TU,TF}) where {Nb,Nk,T,TU,TF,TE}
     sol = UnsteadyRegularizedPotentialFlowSolution(TU(),TF(),zeros(T,Nb),zeros(T,Nk))
     ldiv!(sol,sys,rhs)
     return sol
@@ -179,14 +179,7 @@ function _computesparsekuttaoperator(e::AbstractVector)::SparseMatrixCSC
     return sparse(I - ones(length(e))*e')
 end
 
-function _findactivef̃limit(e::BodyUnitVector, f̃::TF, f̃lim::SuctionParameter) where {TF}
-
-    f̃lim_range = SuctionParameterRange(-f̃lim,f̃lim)
-
-    return _findactivef̃limit(e,f̃,f̃lim_range)
-end
-
-function _findactivef̃limit(e::BodyUnitVector, f̃::TF, f̃lim::SuctionParameterRange) where {TF}
+function _findactivef̃limit(e::BodyUnitVector, f̃::TF, f̃lim::f̃Limits) where {TF}
 
     if e'*f̃ < f̃lim.min
         activef̃lim = f̃lim.min
@@ -232,12 +225,10 @@ function setd_kvec!(sys::RegularizedPotentialFlowSystem{Nb,Nk,T,TU,TF,TE}, d_kve
 
 end
 
-function _removecirculation(sys,rhs)
-    _TF_ones = typeof(rhs.ψb)()
-    _TF_ones .= 1
-    Γ₀ = _TF_ones'*(sys.S.S⁻¹*_TF_ones)
-    rhs.ψb .= rhs.ψb-(_TF_ones*_TF_ones')/Γ₀*(sys.S.S⁻¹*rhs.ψb)
-end
+# function _removecirculation!(ψb,sys)
+#     Γ₀ = sum(sys.f₀)
+#     ψb .= ψb .- 1/Γ₀*sys._TFTFt_ones*sys.S̃.S⁻¹*ψb
+# end
 
 function _computeconstraintonly!(f,sys,w,ψb,nodes)
     nodes .= sys.A⁻¹*w

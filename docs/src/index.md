@@ -2,8 +2,6 @@
 
 *A set of tools to solve potential flows past bodies on a Cartesian grid.*
 
-[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.4549940.svg)](https://doi.org/10.5281/zenodo.4549940)
-
 The objective of this package is to allow easy setup and fast simulation of potential
 flows. The package provides tools for
 - constructing grids, body shapes, and point vortices,

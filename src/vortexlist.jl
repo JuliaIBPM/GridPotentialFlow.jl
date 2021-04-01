@@ -4,11 +4,16 @@ import Base: @propagate_inbounds,getindex, setindex!,iterate,size,length,push!,
               collect, view, vcat, lastindex
 
 """
-    VortexList
+$(TYPEDEF)
 
+Defines a list of point vortices.
+
+# Fields
+
+$(TYPEDFIELDS)
 """
-# TODO: consider using StructArray
 struct VortexList
+    """list: vector of point vortices."""
     list::Vector{Vortex}
 end
 
@@ -34,7 +39,8 @@ function vcat(vl1::VortexList,vl2::VortexList)
 end
 
 """
-    collect(vl::vortexlist) -> Vector{Float64}, Vector{Float64}
+$(TYPEDSIGNATURES)
+
 Collect the inertial-space coordinates and strengths of all of the Lagrange points comprising
 the vortices in vortex list `vl` and return each assembled set as a vector.
 """
@@ -52,17 +58,33 @@ end
 
 collect(vortex::Vortex) = collect(VortexList([vortex]))
 
+"""
+$(TYPEDSIGNATURES)
 
+Returns the positions of all point vortices in `vortices` as `VectorData`.
+"""
 function getpositions(vortices::VortexList)
     positions = VectorData((v->v.x).(vortices.list),(v->v.y).(vortices.list))
     return positions
 end
 
+"""
+$(TYPEDSIGNATURES)
+
+Returns the strengths of all point vortices in `vortices` as `ScalarData`.
+"""
 function getstrengths(vortices::VortexList)
     strengths = ScalarData((v->v.Γ).(vortices.list))
     return strengths
 end
 
+"""
+$(TYPEDSIGNATURES)
+
+Sets the `x` and `y` fields of the point vortices in `vortices` to the entries of `xpositions` and `ypositions`, respectively.
+"""
 function setpositions!(vortices::VortexList,xpositions,ypositions)
+    @assert length(xpositions) == length(vortices)
+    @assert length(ypositions) == length(vortices)
     setposition!.(vortices.list,xpositions,ypositions)
 end

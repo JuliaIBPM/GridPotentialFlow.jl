@@ -3,6 +3,7 @@ module GridPotentialFlow
 using Reexport
 using UnPack
 using RecursiveArrayTools
+using DocStringExtensions
 
 @reexport using CartesianGrids
 @reexport using RigidBodyTools
