@@ -90,7 +90,7 @@ end
 
 function ldiv!(sol::SteadyRegularizedPotentialFlowSolution{T,TU,TF}, sys::RegularizedPotentialFlowSystem{Nb,Nk,T,TU,TF,TE}, rhs::SteadyRegularizedPotentialFlowRHS{TU,TF}) where {Nb,Nk,T,TU,TF,TE}
 
-    @unpack S̃, f₀, e_kvec, P_kvec, _TF_zeros, _TF_ones = sys
+    @unpack S̃, f₀, e_kvec, P_kvec, _TF_zeros, _TF_ones, _w_buf = sys
     @unpack ψ, f, ψ₀ = sol
     @unpack w, ψb, f̃lim_kvec = rhs
 
