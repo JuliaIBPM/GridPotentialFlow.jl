@@ -5,7 +5,7 @@
 [![Stable](https://img.shields.io/badge/docs-stable-blue.svg)](https://JuliaIBPM.github.io/GridPotentialFlow.jl/stable) [![Dev](https://img.shields.io/badge/docs-dev-blue.svg)](https://JuliaIBPM.github.io/GridPotentialFlow.jl/dev)
 [![Build Status](https://github.com/JuliaIBPM/GridPotentialFlow.jl/workflows/CI/badge.svg)](https://github.com/JuliaIBPM/GridPotentialFlow.jl/actions)
 [![Coverage](https://codecov.io/gh/JuliaIBPM/GridPotentialFlow.jl/branch/master/graph/badge.svg)](https://codecov.io/gh/JuliaIBPM/GridPotentialFlow.jl)
-[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.4549940.svg)](https://doi.org/10.5281/zenodo.4549940)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.4662132.svg)](https://doi.org/10.5281/zenodo.4662132)
 
 The objective of this package is to allow easy setup and fast simulation of potential
 flows. The package provides tools for
