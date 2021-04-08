@@ -143,8 +143,8 @@ sol = solvesystem(model,w,parameters=modelparameters);
 #md # ```
 
 #!md # # Analytical solution
-#!md # θ = atan.(circle.y,circle.x)
-#!md # γ = 2*sin.(θ);
+#!md θ = atan.(circle.y,circle.x)
+#!md γ = 2*sin.(θ);
 
 plot(sol.ψ,g)
 plot!(circle,fillcolor=:black,fillrange=0,fillalpha=0.25,linecolor=:black,linewidth=2,xlabel="x",ylabel="y")
