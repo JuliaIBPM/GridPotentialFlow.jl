@@ -97,8 +97,6 @@ Py_numerical_hist = []
 
 for t in T
     Ẋ = computevortexvelocities(model)
-    vortices = deepcopy(model.vortices.list)
-
     X = getvortexpositions(model)
     X = X + Ẋ*Δt
     setvortexpositions!(model,X)
@@ -237,7 +235,7 @@ T = 0.0:Δt:tf;
 #!md blobs = PotentialFlow.Vortex.Blob.(Δz₀ .+ [z₊, z₋], 1.0, δ) # First two point vortices are placed close to the LE and TE with unit strength
 #!md Plates.enforce_no_flow_through!(plate, motion, (), 0)
 #!md Γ₊, Γ₋, _, _ = Plates.vorticity_flux!(plate, blobs[1], blobs[2], 0.0, σLE, σTE); # Determine strength of first two vortices
-#!md # blobs = PotentialFlow.Vortex.Blob.(Δz₀ .+ [z₊, z₋], [Γ₊, Γ₋], δ) # Create first two point vortices now with calculated strengths
+#!md blobs = PotentialFlow.Vortex.Blob.(Δz₀ .+ [z₊, z₋], [Γ₊, Γ₋], δ) # Create first two point vortices now with calculated strengths
 #!md sys₀ = (plate, blobs)
 #!md sys = deepcopy(sys₀)
 #!md sys₊ = deepcopy(sys₀) # Used for storage during time-marching
@@ -295,13 +293,13 @@ end
 # The model parameters should specify the uniform velocity as the negative translational velocity of the plate.
 
 model = VortexModel(g,bodies=[plate],edges=[1,length(plate)],vortices=[firstvLE,firstvTE]);
-modelParameters = ModelParameters(U∞=(-ċ,0.0),σ=[SuctionParameter(σLE),SuctionParameter(σTE)]);
+modelparameters = ModelParameters(U∞=(-ċ,0.0),σ=[SuctionParameter(σLE),SuctionParameter(σTE)]);
 
 # The first impulse we record is with the first two vortices. Note that the `computeimpulse` function internally calls the `solvesystem` method so it sets the strengths of the new vortices and such that they are correctly accounted for in the impulse calculation.
 
 Px_hist = Float64[];
 Py_hist = Float64[];
-Px, Py = computeimpulse(model,parameters=modelParameters);
+Px, Py = computeimpulse(model,parameters=modelparameters);
 push!(Px_hist,Px);
 push!(Py_hist,Py);
 
@@ -309,15 +307,15 @@ push!(Py_hist,Py);
 # Then we enter a time loop and record the impulse every time we create new vortices.
 
 for tloc in T[2:end]
-    Ẋ = computevortexvelocities(model,parameters=modelParameters)
-    vortices = deepcopy(model.vortices.list)
-    updateposition!.(vortices,Ẋ.u,Ẋ.v,Δt)
-    setvortices!(model,vortices)
+    Ẋ = computevortexvelocities(model,parameters=modelparameters)
+    X = getvortexpositions(model)
+    X = X + Ẋ*Δt
+    setvortexpositions!(model,X)
 
     vLE, vTE = createsheddedvortices(plate,model.vortices.list)
     pushvortices!(model,vLE,vTE)
 
-    Px, Py = computeimpulse(model,parameters=modelParameters)
+    Px, Py = computeimpulse(model,parameters=modelparameters)
     push!(Px_hist,Px)
     push!(Py_hist,Py)
 end

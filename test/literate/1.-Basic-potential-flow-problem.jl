@@ -135,7 +135,6 @@ where $v$ is the velocity field on the nodes.
 X_hist = []
 for t in T
     Ẋ = computevortexvelocities(model)
-    vortices = deepcopy(model.vortices.list)
     X = getvortexpositions(model)
     X = X + Ẋ*Δt
     setvortexpositions!(model,X)
@@ -153,3 +152,83 @@ plot!((X->X[1]).(X_hist),(X->X[3]).(X_hist),color=:blue,xlabel="x",ylabel="y")
 #jl     @test isapprox(X_hist[end][3], 0.0; atol = 1e-1)
 #jl     @test isapprox(X_hist[end][4], 0.0; atol = 1e-1)
 #jl end
+
+#=
+## Corotating vortex patches
+A more complex example is the evolution of two circular regions of spatially uniform vorticity that have an equal radius $r_0$ and strength $\Gamma$, and whose centers are separated by a distance $d_0$. Note that if these were two point vortices, their period would be equal to $2 {\pi}^2 {d_0}^2 / \Gamma_0$, so we will take the final time of our simulation equal to some multiple of this to ensure it includes a couple of periods.
+=#
+Γ0 = 1.0;
+d0 = 1.0;
+tf = 4*π^2*d0^2/Γ0;
+tspan = (0.0,tf);
+
+# To simulate their evolution, we discretize these vortex patches with point vortices arranged on concentric rings using the following function.
+
+function vortexpatch!(vort,xc::Float64,yc::Float64,Γ,radius,nring::Int)
+    Δr = radius/(nring-1/2)
+    dΓ = Γ/(1+8*nring*(nring-1)/2)
+    push!(vort,Vortex(xc,yc,dΓ))
+    for ir in 1:nring-1
+        nθ = 8*ir
+        for j = 0:nθ-1
+            push!(vort,Vortex(xc + ir*Δr*cos(2π*j/nθ),yc + ir*Δr*sin(2π*j/nθ),dΓ))
+        end
+    end
+    return vort
+end
+
+vortexpatch(xc,yc,Γ,radius,nring::Int) = vortexpatch!(Vortex[],xc,yc,Γ,radius,nring)
+
+#md # ```@setup 1.-Basic-potential-flow-problem
+#md # xlim = (-2,2);
+#md # ylim = (-2,2);
+#md # Δx = 0.02;
+#md # g = PhysicalGrid(xlim,ylim,Δx);
+#md # ```
+#!md xlim = (-2,2);
+#!md ylim = (-2,2);
+#!md Δx = 0.02;
+#!md g = PhysicalGrid(xlim,ylim,Δx);
+
+# In our last example, we implemented a forward Euler time stepping routine. In this example, we will make use of the fourth-order Runge-Kutta time stepping algorithm of `OrdinaryDiffEq.jl` to get more accurate results.
+
+using OrdinaryDiffEq
+
+# To construct the `ODEProblem` from this package, we will have to provide a right-hand side function.
+
+function rhs(X,model,t)
+    setvortexpositions!(model,X)
+    Ẋ = computevortexvelocities(model)
+    return Ẋ
+end
+
+# We will simulate two cases with different values for $r_0/d_0$, the ratio of the vortex patch radius to the distance between them.
+
+r0 = 0.2*d0;
+vortices = vcat(vortexpatch(0.0,0.0+d0/2,Γ0,r0,10),vortexpatch(0.0,0.0-d0/2,Γ0,r0,10));
+vortexcolors = vcat(fill(:blue,length(vortices)÷2),fill(:red,length(vortices)÷2));
+model = VortexModel(g,vortices=vortices);
+X = getvortexpositions(model)
+prob = ODEProblem(rhs,X,tspan,model);
+sol = solve(prob,dt=0.1,RK4(),dense=false,adaptive=false);
+animation = @gif for i=1:length(sol.t)-1
+    plot(xlims=xlim,ylims=ylim,ratio=:equal,legend=:none,title="r0/d0 = $(r0/d0)")
+    scatter!(sol.u[i].u,sol.u[i].v,markerstrokewidth=0,markersize=3,color=vortexcolors)
+end
+
+
+# If the ratio $r_0/d_0$ is big enough, the two vortex patches merge with eachother, a result that has been widely reported in literature [^1].
+
+r0 = 0.4*d0;
+vortices = vcat(vortexpatch(0.0,0.0+d0/2,Γ0,r0,10),vortexpatch(0.0,0.0-d0/2,Γ0,r0,10));
+vortexcolors = vcat(fill(:blue,length(vortices)÷2),fill(:red,length(vortices)÷2));
+model = VortexModel(g,vortices=vortices);
+X = getvortexpositions(model)
+prob = ODEProblem(rhs,X,tspan,model);
+sol = solve(prob,dt=0.1,RK4(),dense=false,adaptive=false);
+animation = @gif for i=1:length(sol.t)-1
+    plot(xlims=xlim,ylims=ylim,ratio=:equal,legend=:none,title="r0/d0 = $(r0/d0)")
+    scatter!(sol.u[i].u,sol.u[i].v,markerstrokewidth=0,markersize=3,color=vortexcolors)
+end
+
+# [^1]: Eldredge J. D. (2019) "Mathematical  Modeling  of  Unsteady  Inviscid  Flows, Interdisciplinary Applied Mathematics" *Springer*, vol. 50.

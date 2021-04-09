@@ -67,9 +67,9 @@ T = 0:Δt:0.2
 for t in T
     for i in 1:length(σLE_list)
         Ẋ = computevortexvelocities(models[i],parameters=modelparameters[i])
-        vortices = deepcopy(models[i].vortices.list)
-        updateposition!.(vortices,Ẋ.u,Ẋ.v,Δt)
-        setvortices!(models[i],vortices)
+        X = getvortexpositions(models[i])
+        X = X + Ẋ*Δt
+        setvortexpositions!(models[i],X)
 
         vLE, vTE = createsheddedvortices(plate,models[i].vortices.list)
         pushvortices!(models[i],vLE,vTE)
