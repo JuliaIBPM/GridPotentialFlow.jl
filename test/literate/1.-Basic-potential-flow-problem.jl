@@ -34,6 +34,9 @@ model = VortexModel(g,vortices=[v]);
 
 # The discrete streamfunction `s` is then obtained using `computeψ`.
 s = computeψ(model);
+#md # ```@setup 1.-Basic-potential-flow-problem
+#md # ENV["GKSwstype"] = "nul"
+#md # ```
 using Plots
 plot(s,g,xlabel="x",ylabel="y")
 
@@ -155,11 +158,11 @@ plot!((X->X[1]).(X_hist),(X->X[3]).(X_hist),color=:blue,xlabel="x",ylabel="y")
 
 #=
 ## Corotating vortex patches
-A more complex example is the evolution of two circular regions of spatially uniform vorticity that have an equal radius $r_0$ and strength $\Gamma$, and whose centers are separated by a distance $d_0$. Note that if these were two point vortices, their period would be equal to $2 {\pi}^2 {d_0}^2 / \Gamma_0$, so we will take the final time of our simulation equal to some multiple of this to ensure it includes a couple of periods.
+A more complex example is the evolution of two circular regions of spatially uniform vorticity that have an equal radius $r_0$ and strength $\Gamma$, and whose centers are separated by a distance $d_0$. Note that if these were two point vortices, their period would be equal to $2 {\pi}^2 {d_0}^2 / \Gamma_0$, so we will take the final time of our simulation equal to this to ensure it includes one period.
 =#
 Γ0 = 1.0;
 d0 = 1.0;
-tf = 4*π^2*d0^2/Γ0;
+tf = 2*π^2*d0^2/Γ0;
 tspan = (0.0,tf);
 
 # To simulate their evolution, we discretize these vortex patches with point vortices arranged on concentric rings using the following function.
@@ -182,12 +185,12 @@ vortexpatch(xc,yc,Γ,radius,nring::Int) = vortexpatch!(Vortex[],xc,yc,Γ,radius,
 #md # ```@setup 1.-Basic-potential-flow-problem
 #md # xlim = (-2,2);
 #md # ylim = (-2,2);
-#md # Δx = 0.02;
+#md # Δx = 0.05;
 #md # g = PhysicalGrid(xlim,ylim,Δx);
 #md # ```
 #!md xlim = (-2,2);
 #!md ylim = (-2,2);
-#!md Δx = 0.02;
+#!md Δx = 0.05;
 #!md g = PhysicalGrid(xlim,ylim,Δx);
 
 # In our last example, we implemented a forward Euler time stepping routine. In this example, we will make use of the fourth-order Runge-Kutta time stepping algorithm of `OrdinaryDiffEq.jl` to get more accurate results.

@@ -6,6 +6,7 @@ For surfaces that contain convex edges, the vortex sheet strength assumes a sing
 
 # Let's illustrate this with the example of a flat plate. First create the grid.
 #md # ```@setup 4.-The-Kutta-condition
+#md # ENV["GKSwstype"] = "nul"
 #md # using GridPotentialFlow
 #md # using Plots
 #md # ```
