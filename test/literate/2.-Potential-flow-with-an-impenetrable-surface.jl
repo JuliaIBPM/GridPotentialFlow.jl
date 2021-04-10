@@ -32,8 +32,10 @@ This problem has the structure of a generic saddle-point problem and we will enc
 
 # We will now consider two examples. In these examples, we use the following grid.
 #md # ```@setup 2.-Potential-flow-with-an-impenetrable-surface
+#md # ENV["GKSwstype"] = "nul"
 #md # using GridPotentialFlow
 #md # using Plots
+#md # ```
 #md # ```
 #!md using GridPotentialFlow
 #!md using Plots

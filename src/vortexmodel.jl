@@ -4,17 +4,13 @@ import LinearAlgebra: Diagonal, norm
 export VortexModel, computeψ, computew, computew!, computevortexvelocities, _computeregularizationmatrix, getstrengths, getpositions, setvortexpositions!, getvortexpositions, setvortices!, pushvortices!, computeimpulse, computeaddedmassmatrix, solvesystem, solvesystem!
 
 # TODO: check if _computeψboundaryconditions needs to be faster
-# TODO: impulse case when U∞ is specified instead of Ub
-# TODO: create PotentialFlowBody type that encapsulates Ub, Γb, and any regularized edges
+# TODO: impulse case when Ub is specified instead of U∞
 # TODO: try to remove _d_kvec from VortexModel
 # TODO: check memory allocation inverse laplacian in ConstrainedSystems
 # TODO: check if TU, TF should be used to enforce type compatibility in functions
-# TODO: add rotation
-# TODO: rotational coefficients of added mass matrix
 # TODO: add examples
 # TODO: mention frame of reference for computeimpulse
 # TODO: check if fk_vec in systems.jl can be simplified
-# TODO: let literate create scripts for testing
 # TODO: consider no deepcopy for new vortices in the methods and use deepcopy in the scripts instead
 # TODO: use Parameters.jl?
 # TODO: consider using StructArray for vortexlist
