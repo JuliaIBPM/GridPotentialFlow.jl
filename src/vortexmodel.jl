@@ -148,7 +148,7 @@ Sets the positions of the vortices in `vortexmodel` to the provided `X_vortices`
 """
 function setvortexpositions!(vortexmodel::VortexModel{Nb,Ne}, X_vortices::VectorData{Nv}) where {Nb,Ne,Nv}
 
-    @assert Nv == length(vortexmodel.vortices)
+    #@assert Nv == length(vortexmodel.vortices)
 
     setpositions!(vortexmodel.vortices,X_vortices.u,X_vortices.v)
 end
