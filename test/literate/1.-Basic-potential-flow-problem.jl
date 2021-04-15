@@ -140,14 +140,14 @@ for t in T
     Ẋ = computevortexvelocities(model)
     X = getvortexpositions(model)
     X = X + Ẋ*Δt
-    setvortexpositions!(model,X)
-    push!(X_hist,X)
+#     setvortexpositions!(model,X)
+#     push!(X_hist,X)
 end
 
 ψ = computeψ(model);
 plot(ψ,g)
-# scatter!((v->v.x).(model.vortices.list),(v->v.y).(model.vortices.list),color=:red)
-# plot!((X->X[1]).(X_hist),(X->X[3]).(X_hist),color=:blue,xlabel="x",ylabel="y")
+scatter!((v->v.x).(model.vortices.list),(v->v.y).(model.vortices.list),color=:red)
+plot!((X->X[1]).(X_hist),(X->X[3]).(X_hist),color=:blue,xlabel="x",ylabel="y")
 
 #jl @testset "Corotating point vortices" begin
 #jl     @test isapprox(X_hist[end][1], 0.5; atol = 1e-1)
