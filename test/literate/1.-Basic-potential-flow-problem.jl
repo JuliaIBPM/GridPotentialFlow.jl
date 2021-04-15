@@ -140,8 +140,6 @@ for t in T
     Ẋ = computevortexvelocities(model)
     X = getvortexpositions(model)
     X = X + Ẋ*Δt
-#     setvortexpositions!(model,X)
-#     push!(X_hist,X)
 end
 
 ψ = computeψ(model);
