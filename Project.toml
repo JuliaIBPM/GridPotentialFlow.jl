@@ -2,7 +2,7 @@ name = "GridPotentialFlow"
 uuid = "1f0d46c9-1630-4f7c-9a63-ed825740f08c"
 authors = ["Jeff Eldredge <jdeldre@g.ucla.edu>", "Diederik Beckers <diederikbeckers@g.ucla.edu>"]
 repo = "https://github.com/JuliaIBPM/GridPotentialFlow.jl"
-version = "0.2.0"
+version = "0.2.1"
 
 [deps]
 CartesianGrids = "3e975e5d-2cf8-4263-9573-8460aaf534d9"
