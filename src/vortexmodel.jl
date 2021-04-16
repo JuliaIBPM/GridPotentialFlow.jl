@@ -491,3 +491,12 @@ function computeaddedmassmatrix(vortexmodel::VortexModel{Nb,Ne}) where {Nb,Ne}
     end
     return M
 end
+
+function Base.show(io::IO, model::VortexModel{Nb,Ne,isshedding}) where {Nb,Ne,isshedding}
+    NX = model.g.N[1]
+    NY = model.g.N[2]
+    N = length(model._bodydata)
+    Nv = length(model.vortices)
+
+    println(io, "Vortex model on a grid of size $NX x $NY and $N immersed points with $((Nv == 1) ? "1 vortex" : "$Nv vortices"), $((Nb == 1) ? "1 body" : "$Nb bodies"), and $((Ne == 1) ? "1 regularized edge" : "$Ne regularized edges")")
+end
