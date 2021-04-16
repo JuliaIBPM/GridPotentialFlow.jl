@@ -1,5 +1,6 @@
 import CartesianGrids: curl!, Laplacian
 import LinearAlgebra: Diagonal, norm
+import Base: show
 
 export VortexModel, computeψ, computew, computew!, computevortexvelocities, _computeregularizationmatrix, getstrengths, getpositions, setvortexpositions!, getvortexpositions, setvortices!, pushvortices!, computeimpulse, computeaddedmassmatrix, solvesystem, solvesystem!
 
@@ -150,7 +151,7 @@ function setvortexpositions!(vortexmodel::VortexModel{Nb,Ne}, X_vortices::Vector
 
     @assert Nv == length(vortexmodel.vortices)
 
-    setpositions!(vortexmodel.vortices,X_vortices.u,X_vortices.v)
+    setpositions!(vortexmodel.vortices,X_vortices.u.data,X_vortices.v.data)
 end
 
 """
@@ -492,7 +493,7 @@ function computeaddedmassmatrix(vortexmodel::VortexModel{Nb,Ne}) where {Nb,Ne}
     return M
 end
 
-function Base.show(io::IO, model::VortexModel{Nb,Ne,isshedding}) where {Nb,Ne,isshedding}
+function show(io::IO, model::VortexModel{Nb,Ne,isshedding}) where {Nb,Ne,isshedding}
     NX = model.g.N[1]
     NY = model.g.N[2]
     N = length(model._bodydata)
