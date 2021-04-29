@@ -1,6 +1,8 @@
 using Documenter
 using GridPotentialFlow
 
+ENV["GKSwstype"] = "nul"
+
 makedocs(
     sitename = "GridPotentialFlow",
     format = Documenter.HTML(),

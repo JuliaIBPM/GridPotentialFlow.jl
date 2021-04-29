@@ -27,7 +27,6 @@ To verify our method of calculating the impulse, we create a model of two point 
 
 # We use a rectangular grid.
 #md # ```@setup 6.-Force-and-the-added-mass
-#md # ENV["GKSwstype"] = "nul"
 #md # using GridPotentialFlow
 #md # using Plots
 #md # ```
@@ -111,7 +110,7 @@ end
 
 # When we compare the trajectories and impulse history, the numerical and anaylytical solution should match closely, which is indeed the case.
 plot(circle,fillcolor=:black,fillrange=0,fillalpha=0.25,linecolor=:black,linewidth=2,xlabel="x",ylabel="y")
-scatter!((v->v.x).(model.vortices.list),(v->v.y).(model.vortices.list),color=:red)
+scatter!(model.vortices,color=:red)
 plot!(x_trajectory,y_trajectory_upper,linecolor=:red,label="exact")
 plot!(x_trajectory,y_trajectory_lower,linecolor=:red,label="")
 plot!((X->X[1]).(X_hist),(X->X[3]).(X_hist),color=:blue,linestyle=:dash,label="simulated")
@@ -330,7 +329,7 @@ Fy_hist = -diff(Py_hist)/Δt;
 
 plot(plate,fillcolor=:black,fillrange=0,fillalpha=0.25,linecolor=:black,linewidth=2,xlim=xlim,ylim=ylim,xlabel="x",ylabel="y")
 scatter!(real.((v->v.z).(sys[2])).-tf*ċ,imag.((v->v.z).(sys[2])),color=:red,markersize=4,label="PotentialFlow.jl")
-scatter!((v->v.x).(model.vortices.list),(v->v.y).(model.vortices.list),color=:blue,markersize=2,label="GridPotentialFlow.jl")
+scatter!(model.vortices,color=:blue,markersize=2,label="GridPotentialFlow.jl")
 
 # The vertical impulse and the vertical force (lift) can also be compared and show good agreement as well.
 plot(xlabel="t",ylabel="Py")

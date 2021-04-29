@@ -14,7 +14,7 @@ mutable struct Vortex
     x::Float64
     """y: y-coordinate of the vortex position."""
     y::Float64
-    """Γ: strength of the vortex. Positive if counter-clockwise."""
+    """Γ: Strength of the vortex. Positive if counter-clockwise."""
     Γ::Float64
 end
 

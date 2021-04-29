@@ -17,7 +17,6 @@ If $\mathfrak{e}_{k}^T\tilde{\mathfrak{f}}^*$ lies within this range, then no ne
 
 # Let's illustrate this again with the example of a flat plate. To clearly show the effect of varying the suction parameter, we will run a simulation of the vortex shedding for a couple of time steps for three different suction parameter ranges. First we create the grid and the flate plate.
 #md # ```@setup 5.-Generalized-edge-conditions
-#md # ENV["GKSwstype"] = "nul"
 #md # using GridPotentialFlow
 #md # using Plots
 #md # ```
@@ -81,9 +80,9 @@ end
 colors = [:red,:blue,:green];
 plot(plate,fillcolor=:black,fillrange=0,fillalpha=0.25,linecolor=:black,linewidth=2,xlabel="x",ylabel="y")
 for i in 1:length(models)
-    plot!((v->v.x).(models[i].vortices.list[4:2:end]),(v->v.y).(models[i].vortices.list[4:2:end]),color=colors[i],marker=:circle,markersize=2)
-    plot!((v->v.x).(models[i].vortices.list[3:2:end]),(v->v.y).(models[i].vortices.list[3:2:end]),color=colors[i],marker=:circle,markersize=2)
-    scatter!((v->v.x).(models[i].vortices.list[1:2]),(v->v.y).(models[i].vortices.list[1:2]),color=colors[i],marker=:circle,markersize=2,label="σLE=$(σLE_list[i])")
+    plot!(models[i].vortices.list[4:2:end],color=colors[i],marker=:circle,markersize=2)
+    plot!(models[i].vortices.list[3:2:end],color=colors[i],marker=:circle,markersize=2)
+    scatter!(models[i].vortices.list[1:2],color=colors[i],marker=:circle,markersize=2,label="σLE=$(σLE_list[i])")
 end
 plot!()
 

@@ -33,13 +33,13 @@ $(TYPEDFIELDS)
 mutable struct VortexModel{Nb,Ne,isshedding}
     """g: The grid on which the vortex model is defined."""
     g::PhysicalGrid
-    """bodies: The bodies in the vortex model."""
+    """bodies: Bodies in the vortex model."""
     bodies::BodyList
-    """vortices: The point vortices in the vortex model."""
+    """vortices: Point vortices in the vortex model."""
     vortices::VortexList
-    """edges: The vector of body points where shedding occurs."""
+    """edges: Array of body points where shedding occurs."""
     edges::Vector{Int}
-    """system: The potential flow system that has to be solved with a `PotentialFlowRHS` and a `PotentialFlowSolution` to compute the potential flow that governs the vortex model.
+    """system: Potential flow system that has to be solved with a `PotentialFlowRHS` and a `PotentialFlowSolution` to compute the potential flow that governs the vortex model.
     """
     system::PotentialFlowSystem
 
