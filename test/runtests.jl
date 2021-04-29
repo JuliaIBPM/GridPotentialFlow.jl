@@ -2,7 +2,9 @@ using GridPotentialFlow
 using Test
 using Literate
 
-const GROUP = get(ENV, "GROUP", "Notebooks")
+const GROUP = get(ENV, "GROUP", "All")
+
+ENV["GKSwstype"] = "nul"
 
 notebookdir = "../examples"
 docdir = "../docs/src/manual"

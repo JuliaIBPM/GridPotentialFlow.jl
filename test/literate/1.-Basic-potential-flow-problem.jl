@@ -146,7 +146,7 @@ end
 
 ψ = computeψ(model);
 plot(ψ,g)
-scatter!((v->v.x).(model.vortices.list),(v->v.y).(model.vortices.list),color=:red)
+scatter!(model.vortices,color=:red)
 plot!((X->X[1]).(X_hist),(X->X[3]).(X_hist),color=:blue,xlabel="x",ylabel="y")
 
 #jl @testset "Corotating point vortices" begin

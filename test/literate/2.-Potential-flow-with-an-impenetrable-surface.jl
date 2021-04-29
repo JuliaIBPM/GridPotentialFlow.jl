@@ -36,7 +36,6 @@ This problem has the structure of a generic saddle-point problem and we will enc
 #md # using GridPotentialFlow
 #md # using Plots
 #md # ```
-#md # ```
 #!md using GridPotentialFlow
 #!md using Plots
 Δx = 0.03

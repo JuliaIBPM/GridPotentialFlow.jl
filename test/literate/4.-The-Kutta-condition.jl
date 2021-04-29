@@ -140,7 +140,7 @@ w = computew(model)
 sol = solvesystem(model,w,parameters=modelparameters);
 plot(sol.ψ,g);
 plot!(plate,linecolor=:black,linewidth=2)
-scatter!([vTE.x],[vTE.y],color=:black,markersize=2,xlabel="x",ylabel="y")
+scatter!(model.vortices,color=:black,markersize=2,xlabel="x",ylabel="y")
 
 # Because of the proximity of the point vortex to the flat plate, $\tilde{\mathfrak{f}}$ exhibits a quick variation in its value at the surface points that lie closest to the point vortex. The value at the trailing edge point itself is still constrained to zero.
 plot(plot(sol.f,xlabel="body point index",ylabel="f",legend=false),plot(sol.f./f₀,xlabel="body point index",ylabel="f̃",legend=false),size=[800,300])
@@ -176,7 +176,7 @@ w = computew(model)
 sol = solvesystem(model,w,parameters=modelparameters);
 plot(sol.ψ,g);
 plot!(plate,linecolor=:black,linewidth=2)
-scatter!([vLE.x,vTE.x],[vLE.y,vTE.y],color=:black,markersize=2,xlabel="x",ylabel="y")
+scatter!(model.vortices,color=:black,markersize=2,xlabel="x",ylabel="y")
 
 #
 
