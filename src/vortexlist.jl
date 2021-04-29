@@ -1,3 +1,5 @@
+using RecipesBase
+
 export VortexList
 
 import Base: @propagate_inbounds,getindex, setindex!,iterate,size,length,push!,
@@ -13,7 +15,7 @@ Defines a list of point vortices.
 $(TYPEDFIELDS)
 """
 struct VortexList
-    """list: vector of point vortices."""
+    """list: Array of point vortices."""
     list::Vector{Vortex}
 end
 
@@ -88,3 +90,6 @@ function setpositions!(vortices::VortexList,xpositions,ypositions)
     @assert length(ypositions) == length(vortices)
     setposition!.(vortices.list,xpositions,ypositions)
 end
+
+@recipe f(vl::VortexList) = map(p->p.x,vl.list), map(p->p.y,vl.list)
+@recipe f(vl::Vector{Vortex}) = map(p->p.x,vl), map(p->p.y,vl)
