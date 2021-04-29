@@ -27,7 +27,6 @@ To verify our method of calculating the impulse, we create a model of two point 
 
 # We use a rectangular grid.
 #md # ```@setup 6.-Force-and-the-added-mass
-#md # ENV["GKSwstype"] = "nul"
 #md # using GridPotentialFlow
 #md # using Plots
 #md # ```

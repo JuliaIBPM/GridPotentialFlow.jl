@@ -20,7 +20,6 @@ and the circulation can be specified in `ModelParameters`. If it is not specifie
 # We now illustrate how to specify the circulation by simulating the flow around two cylinders that have different circulations.
 
 #md # ```@setup 3.-Non-uniqueness-and-discrete-circulation
-#md # ENV["GKSwstype"] = "nul"
 #md # using GridPotentialFlow
 #md # using Plots
 #md # ```

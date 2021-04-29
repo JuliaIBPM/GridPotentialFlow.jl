@@ -17,7 +17,6 @@ If $\mathfrak{e}_{k}^T\tilde{\mathfrak{f}}^*$ lies within this range, then no ne
 
 # Let's illustrate this again with the example of a flat plate. To clearly show the effect of varying the suction parameter, we will run a simulation of the vortex shedding for a couple of time steps for three different suction parameter ranges. First we create the grid and the flate plate.
 #md # ```@setup 5.-Generalized-edge-conditions
-#md # ENV["GKSwstype"] = "nul"
 #md # using GridPotentialFlow
 #md # using Plots
 #md # ```
