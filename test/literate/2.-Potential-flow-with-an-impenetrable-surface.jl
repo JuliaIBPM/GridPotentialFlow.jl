@@ -94,7 +94,7 @@ plot(sol.ψ,g)
 plot!(circle,fillcolor=:black,fillrange=0,fillalpha=0.25,linecolor=:black,linewidth=2)
 scatter!([vortex.x],[vortex.y],color=:black,markersize=2,xlabel="x",ylabel="y")
 
-# For this example, we can easily calculate the analytical bound vortex sheet strength $\gamma and compare it with our numerical solution $f$.
+# For this example, we can easily calculate the analytical bound vortex sheet strength $\gamma$ and compare it with our numerical solution $f$.
 #md # See the notebook in the examples folder for the analytical solution.
 plot(sol.f./Δs,label="f/ds",xlabel="body point index")
 plot!(γ,label="gamma")
