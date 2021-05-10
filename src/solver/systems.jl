@@ -1,10 +1,131 @@
-import LinearAlgebra: I, \, ldiv!, norm
+import LinearAlgebra: I, \, ldiv!, mul!, norm, LU, factorize, Factorization
 import SparseArrays: AbstractSparseMatrix, SparseMatrixCSC, sparse
 import Statistics: mean
 
+using LinearMaps
+
 export UnregularizedPotentialFlowSystem, RegularizedPotentialFlowSystem, PotentialFlowSystem, setd_kvec!
 
+abstract type AbstractPotentialFlowSystem{TU} end
+
 abstract type PotentialFlowSystem end
+
+struct ImmersedBodyLaplacian{TU,TF} <: AbstractPotentialFlowSystem{TU}
+    L::CartesianGrids.Laplacian
+    R::RegularizationMatrix{TU,TF}
+    E::InterpolationMatrix{TU,TF}
+    _A⁻¹r₁::TU
+    _B₁ᵀf::TU
+    _f_buf::TF
+    _Sfact::LU # Factorization
+
+    function ImmersedBodyLaplacian(L::CartesianGrids.Laplacian, R::RegularizationMatrix{TU,TF}, E::InterpolationMatrix{TU,TF}) where {TU,TF}
+        _A⁻¹r₁ = TU()
+        _B₁ᵀf = TU()
+        _f_buf = TF()
+
+        Rmap = LinearMap(x->vec(R*x),length(_A⁻¹r₁),length(_f_buf));
+        Emap = LinearMap(x->E*TU(x),length(_f_buf),length(_A⁻¹r₁));
+        L⁻¹map = LinearMap(x->vec(L\TU(x)),length(_A⁻¹r₁));
+        Smap = -Emap*L⁻¹map*Rmap
+        _Sfact = factorize(Matrix(Smap))
+
+        new{TU,TF}(L, R, E, _A⁻¹r₁, _B₁ᵀf, _f_buf, _Sfact)
+    end
+end
+
+struct ImmersedBodyLaplacianWithCirculation{TU,TF,TFB} <: AbstractPotentialFlowSystem{TU}
+    _ibl::ImmersedBodyLaplacian{TU,TF}
+    _TFB_ones::TFB # Matrix with the i,j-th entry equal to one if i is an index of the PointData that belongs to the j-th body and zero otherwise.
+    _TFB_buf::TFB
+    _S₀::Union{Factorization,Float64}
+    _ψ₀_buf::Vector{Float64}
+    _sol_buf::BasicPotentialFlowSolution{TU,TF}
+
+    function ImmersedBodyLaplacianWithCirculation(L::CartesianGrids.Laplacian, R::RegularizationMatrix{TU,TF}, E::InterpolationMatrix{TU,TF}, _TFB_ones::TFB) where {TU,TF,TFB}
+        Nb = size(_TFB_ones,2)
+        _ibl = ImmersedBodyLaplacian(L,R,E)
+        _S₀ = Matrix{Float64}(undef,Nb,Nb)
+        _S₀ .= _TFB_ones'*(_ibl._Sfact\_TFB_ones)
+        _S₀fact = factorize(_S₀)
+        _ψ₀_buf = zeros(Nb)
+        _sol_buf = BasicPotentialFlowSolution{TU,TF}(TU(),TF())
+        new{TU,TF,TFB}(_ibl, _TFB_ones, deepcopy(_TFB_ones), _S₀fact, _ψ₀_buf, _sol_buf)
+    end
+end
+
+# struct SteadyRegularizedSystem{TU,TF} <: AbstractPotentialFlowSystem{TU}
+#     ibl::ImmersedBodyLaplacian{TU,TF}
+#     f₀::TF
+# end
+#
+# struct UnsteadyRegularizedSystem{TU,TF} <: AbstractPotentialFlowSystem{TU}
+#     ibl::ImmersedBodyLaplacian{TU,TF}
+#     f₀::TF
+# end
+
+
+
+
+# function ldiv!(sol::TS, sys::ImmersedBodyLaplacian{TU,TF}, rhs::TR; onlyf=false) where {TU,TF,TS<:AbstractPotentialFlowSolution{TU,TF},TR<:AbstractPotentialFlowRHS}
+function ldiv!(sol::TS, sys::ImmersedBodyLaplacian{TU,TF}, rhs::TR; zerow=false, zeroψb=false, onlyf=false) where {TU,TF,TS,TR}
+
+    if zerow
+        sys._f_buf .= 0.0
+    else
+        ldiv!(sys._A⁻¹r₁, sys.L, rhs.w) # -A⁻¹r₁ (note minus sign)
+        mul!(sys._f_buf, sys.E, sys._A⁻¹r₁) # -B₂A⁻¹r₁ (note minus sign)
+    end
+
+    if !zeroψb
+        sys._f_buf .= rhs.ψb .+ sys._f_buf # r₂ - B₂A⁻¹r₁
+    end
+    ldiv!(sol.f.data, sys._Sfact, sys._f_buf.data) # S⁻¹(r₂ - B₂A⁻¹r₁)
+
+    if !onlyf
+        mul!(sys._B₁ᵀf, sys.R, sol.f)
+        ldiv!(sol.ψ, sys.L, sys._B₁ᵀf)
+        sol.ψ .= sys._A⁻¹r₁ .- sol.ψ
+    end
+
+    return sol
+end
+
+function ldiv!(sol::TS, sys::ImmersedBodyLaplacianWithCirculation{TU,TF,TFB}, rhs::TR; useprovidedsol=false) where {TU,TF,TFB,TS,TR}
+
+    # _computeconstraintonly!(f,S,ConstrainedSystems._unwrap_vec(-w),ψb,ConstrainedSystems._unwrap_vec(ψ))
+    if !useprovidedsol
+        ldiv!(sol, sys._ibl, rhs)
+    end
+    # ψ₀ = -S₀\(Γb-_TFB_ones'*f)
+    mul!(sys._ψ₀_buf, sys._TFB_ones', sol.f)
+    sys._ψ₀_buf .= rhs.Γb .- sys._ψ₀_buf
+    ldiv!(sol.ψ₀, sys._S₀, sys._ψ₀_buf)
+    sol.ψ₀ .= .-sol.ψ₀
+
+    # ldiv!(SaddleVector(ψ,_f_buf),S,SaddleVector(_TU_zeros,_TFB_ones*ψ₀))
+    mul!(sys._TFB_buf, sys._TFB_ones, sol.ψ₀)
+    ldiv!(sys._sol_buf, sys._ibl, BasicPotentialFlowRHS(rhs.w,sys._TFB_buf), zerow=true)
+
+    sol.f .= sol.f .- sys._sol_buf.f
+    sol.ψ .= sol.ψ .- sys._sol_buf.ψ
+
+end
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 struct UnregularizedPotentialFlowSystem{Nb,T,TU,TF,TFB} <: PotentialFlowSystem
     S::SaddleSystem

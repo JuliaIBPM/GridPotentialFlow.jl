@@ -1,5 +1,19 @@
 export PotentialFlowRHS
 
+
+struct BasicPotentialFlowRHS{TU,TF}
+    w::TU
+    ψb::TF
+end
+
+
+
+
+
+
+
+
+
 const f̃Limit = Float64
 
 struct f̃Limits

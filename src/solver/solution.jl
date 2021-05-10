@@ -1,5 +1,15 @@
 export PotentialFlowSolution
 
+abstract type AbstractPotentialFlowSolution end
+
+struct BasicPotentialFlowSolution{TU,TF} <: AbstractPotentialFlowSolution
+    ψ::TU
+    f::TF
+end
+
+
+
+
 abstract type PotentialFlowSolution end
 
 struct UnregularizedPotentialFlowSolution{T,TU,TF} <: PotentialFlowSolution
