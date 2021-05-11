@@ -34,25 +34,63 @@ struct ImmersedBodyLaplacian{TU,TF} <: AbstractPotentialFlowSystem{TU}
     end
 end
 
-struct ImmersedBodyLaplacianWithCirculation{TU,TF,TFB} <: AbstractPotentialFlowSystem{TU}
-    _ibl::ImmersedBodyLaplacian{TU,TF}
-    _TFB_ones::TFB # Matrix with the i,j-th entry equal to one if i is an index of the PointData that belongs to the j-th body and zero otherwise.
-    _TFB_buf::TFB
-    _S₀::Union{Factorization,Float64}
+"""
+$(TYPEDEF)
+
+... System with a constraint on f
+"""
+struct ConstrainedImmersedBodyLaplacian{TU,TF,TFBT,TFB} <: AbstractPotentialFlowSystem{TU}
+    ibl::ImmersedBodyLaplacian{TU,TF}
+    B₁ᵀpart2::TFBT
+    B₂part2::TFB
+    _f_buf::TF
+    _S₀fact::Union{Factorization,Float64}
     _ψ₀_buf::Vector{Float64}
     _sol_buf::BasicPotentialFlowSolution{TU,TF}
 
-    function ImmersedBodyLaplacianWithCirculation(L::CartesianGrids.Laplacian, R::RegularizationMatrix{TU,TF}, E::InterpolationMatrix{TU,TF}, _TFB_ones::TFB) where {TU,TF,TFB}
-        Nb = size(_TFB_ones,2)
-        _ibl = ImmersedBodyLaplacian(L,R,E)
-        _S₀ = Matrix{Float64}(undef,Nb,Nb)
-        _S₀ .= _TFB_ones'*(_ibl._Sfact\_TFB_ones)
-        _S₀fact = factorize(_S₀)
+    function ConstrainedImmersedBodyLaplacian(L::CartesianGrids.Laplacian, R::RegularizationMatrix{TU,TF}, E::InterpolationMatrix{TU,TF}, B₁ᵀpart2::TFBT, B₂part2::TFB) where {TU,TF,TFBT,TFB}
+        Nb = size(B₁ᵀpart2,2)
+        ibl = ImmersedBodyLaplacian(L,R,E)
+        S₀ = Matrix{Float64}(undef,Nb,Nb)
+        S₀ .= B₂part2*(ibl._Sfact\B₁ᵀpart2)
+        _S₀fact = factorize(S₀)
         _ψ₀_buf = zeros(Nb)
         _sol_buf = BasicPotentialFlowSolution{TU,TF}(TU(),TF())
-        new{TU,TF,TFB}(_ibl, _TFB_ones, deepcopy(_TFB_ones), _S₀fact, _ψ₀_buf, _sol_buf)
+        new{TU,TF,TFBT,TFB}(ibl, B₁ᵀpart2, B₂part2, TF(), _S₀fact, _ψ₀_buf, _sol_buf)
     end
 end
+
+struct RegularizedImmersedBodyLaplacian{TU,TF,TFBT,TFB} <: AbstractPotentialFlowSystem{TU}
+    cibl::ConstrainedImmersedBodyLaplacian{TU,TF,TFBT,TFB}
+    f₀::TF
+
+    function RegularizedImmersedBodyLaplacian(L::CartesianGrids.Laplacian, R::RegularizationMatrix{TU,TF}, E::InterpolationMatrix{TU,TF}, B₁ᵀpart2::TFBT, B₂part2::TFB, f₀::TF) where {TU,TF,TFBT,TFB}
+        R̃ = deepcopy(R)
+        R̃.M .= R̃.M*Diagonal(f₀)
+        cibl = ConstrainedImmersedBodyLaplacian(L, R̃, E, B₁ᵀpart2, B₂part2)
+        new{TU,TF,TFBT,TFB}(cibl, f₀)
+    end
+end
+
+# struct ConstrainedImmersedBodyLaplacian{TU,TF,TFB} <: AbstractPotentialFlowSystem{TU}
+#     _ibl::ImmersedBodyLaplacian{TU,TF}
+#     _TFB_ones::TFB # Matrix with the i,j-th entry equal to one if i is an index of the PointData that belongs to the j-th body and zero otherwise.
+#     _TFB_buf::TFB
+#     _S₀::Union{Factorization,Float64}
+#     _ψ₀_buf::Vector{Float64}
+#     _sol_buf::BasicPotentialFlowSolution{TU,TF}
+#
+#     function ConstrainedImmersedBodyLaplacian(L::CartesianGrids.Laplacian, R::RegularizationMatrix{TU,TF}, E::InterpolationMatrix{TU,TF}, _TFB_ones::TFB) where {TU,TF,TFB}
+#         Nb = size(_TFB_ones,2)
+#         _ibl = ImmersedBodyLaplacian(L,R,E)
+#         _S₀ = Matrix{Float64}(undef,Nb,Nb)
+#         _S₀ .= _TFB_ones'*(_ibl._Sfact\_TFB_ones)
+#         _S₀fact = factorize(_S₀)
+#         _ψ₀_buf = zeros(Nb)
+#         _sol_buf = BasicPotentialFlowSolution{TU,TF}(TU(),TF())
+#         new{TU,TF,TFB}(_ibl, _TFB_ones, deepcopy(_TFB_ones), _S₀fact, _ψ₀_buf, _sol_buf)
+#     end
+# end
 
 # struct SteadyRegularizedSystem{TU,TF} <: AbstractPotentialFlowSystem{TU}
 #     ibl::ImmersedBodyLaplacian{TU,TF}
@@ -73,13 +111,14 @@ function ldiv!(sol::TS, sys::ImmersedBodyLaplacian{TU,TF}, rhs::TR; zerow=false,
     if zerow
         sys._f_buf .= 0.0
     else
-        ldiv!(sys._A⁻¹r₁, sys.L, rhs.w) # -A⁻¹r₁ (note minus sign)
+        ldiv!(sys._A⁻¹r₁, sys.L, rhs.w) # -A⁻¹r₁ (note minus sign because w and not -w is used)
         mul!(sys._f_buf, sys.E, sys._A⁻¹r₁) # -B₂A⁻¹r₁ (note minus sign)
     end
 
     if !zeroψb
         sys._f_buf .= rhs.ψb .+ sys._f_buf # r₂ - B₂A⁻¹r₁
     end
+
     ldiv!(sol.f.data, sys._Sfact, sys._f_buf.data) # S⁻¹(r₂ - B₂A⁻¹r₁)
 
     if !onlyf
@@ -91,24 +130,38 @@ function ldiv!(sol::TS, sys::ImmersedBodyLaplacian{TU,TF}, rhs::TR; zerow=false,
     return sol
 end
 
-function ldiv!(sol::TS, sys::ImmersedBodyLaplacianWithCirculation{TU,TF,TFB}, rhs::TR; useprovidedsol=false) where {TU,TF,TFB,TS,TR}
+function ldiv!(sol::TS, sys::ConstrainedImmersedBodyLaplacian{TU,TF,TFBT,TFB}, rhs::TR; useprovidedsol=false) where {TU,TF,TFBT,TFB,TS,TR}
+
+    if rhs isa UnregularizedPotentialFlowRHS
+        fconstraintRHS = rhs.Γb
+    elseif rhs isa SteadyRegularizedPotentialFlowRHS
+        fconstraintRHS = rhs.f̃lim_kvec
+    end
 
     # _computeconstraintonly!(f,S,ConstrainedSystems._unwrap_vec(-w),ψb,ConstrainedSystems._unwrap_vec(ψ))
     if !useprovidedsol
-        ldiv!(sol, sys._ibl, rhs)
+        ldiv!(sol, sys.ibl, rhs)
     end
-    # ψ₀ = -S₀\(Γb-_TFB_ones'*f)
-    mul!(sys._ψ₀_buf, sys._TFB_ones', sol.f)
-    sys._ψ₀_buf .= rhs.Γb .- sys._ψ₀_buf
-    ldiv!(sol.ψ₀, sys._S₀, sys._ψ₀_buf)
+
+    # ψ₀ = -S₀\(Γb-B₂*f)
+    mul!(sys._ψ₀_buf, sys.B₂part2, sol.f)
+    sys._ψ₀_buf .= fconstraintRHS .- sys._ψ₀_buf
+    ldiv!(sol.ψ₀, sys._S₀fact, sys._ψ₀_buf)
     sol.ψ₀ .= .-sol.ψ₀
 
     # ldiv!(SaddleVector(ψ,_f_buf),S,SaddleVector(_TU_zeros,_TFB_ones*ψ₀))
-    mul!(sys._TFB_buf, sys._TFB_ones, sol.ψ₀)
-    ldiv!(sys._sol_buf, sys._ibl, BasicPotentialFlowRHS(rhs.w,sys._TFB_buf), zerow=true)
+    mul!(sys._f_buf, sys.B₁ᵀpart2, sol.ψ₀)
+    ldiv!(sys._sol_buf, sys.ibl, BasicPotentialFlowRHS(rhs.w, sys._f_buf), zerow=true)
 
     sol.f .= sol.f .- sys._sol_buf.f
     sol.ψ .= sol.ψ .- sys._sol_buf.ψ
+
+end
+
+function ldiv!(sol::TS, sys::RegularizedImmersedBodyLaplacian{TU,TF,TFBT,TFB}, rhs::TR; useprovidedsol=false) where {TU,TF,TFBT,TFB,TS,TR}
+
+    ldiv!(sol, sys.cibl, rhs)
+    sol.f .*= sys.f₀
 
 end
 
@@ -221,8 +274,10 @@ function ldiv!(sol::SteadyRegularizedPotentialFlowSolution{T,TU,TF}, sys::Regula
 
     # eq 2.33
     _computeconstraintonly!(f,S̃,ConstrainedSystems._unwrap_vec(-w),ψb,ConstrainedSystems._unwrap_vec(ψ))
+    println(f)
     # eq 2.35 + accounting for generalized edge conditions
     ψ₀ .= mean(e_kvec)'*f .- mean(f̃lim_kvec)
+    println(ψ₀)
     # eq 2.37 + accounting for generalized edge conditions
     f .= mean(P_kvec)*f + _TF_ones*mean(f̃lim_kvec) # Represents f̃
     # eq 2.38
