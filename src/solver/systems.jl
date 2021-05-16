@@ -39,32 +39,38 @@ $(TYPEDEF)
 
 ... System with a single type of constraints on f
 """
-struct ConstrainedIBPoisson{TU,TF,TB1T_2,TB2_2} <: AbstractPotentialFlowSystem{TU}
+struct ConstrainedIBPoisson{Nb,TU,TF} <: AbstractPotentialFlowSystem{TU}
     ibp::IBPoisson{TU,TF}
-    B₁ᵀpart2::TB1T_2
-    B₂part2::TB2_2
+    B₁ᵀ₂cols::Vector{TF}
+    B₂₂rows::Vector{TF}
     _f_buf::TF
     _f_buf2::TF
     _S₀fact::Union{Factorization,Float64}
     _ψ₀_buf::Vector{Float64}
     _sol_buf::IBPoissonSolution{TU,TF}
 
-    function ConstrainedIBPoisson(L::CartesianGrids.Laplacian, R::RegularizationMatrix{TU,TF}, E::InterpolationMatrix{TU,TF}, B₁ᵀpart2::TB1T_2, B₂part2::TB2_2) where {TU,TF,TB1T_2,TB2_2}
-        Nb = size(B₁ᵀpart2,2) # number of bodies
+    function ConstrainedIBPoisson(L::CartesianGrids.Laplacian, R::RegularizationMatrix{TU,TF}, E::InterpolationMatrix{TU,TF}, B₁ᵀ₂cols::Vector{TF}, B₂₂rows::Vector{TF}) where {TU,TF}
+        _f_buf = TF()
+        _f_buf2 = TF()
+        Nb = length(B₁ᵀ₂cols) # number of bodies
         ibp = IBPoisson(L,R,E)
-        S₀ = Matrix{Float64}(undef,Nb,Nb)
-        _S₀fact = _computeS₀fact(S₀,ibp._Sfact,B₁ᵀpart2,B₂part2,deepcopy(B₁ᵀpart2))
+        S₀ = Matrix{Float64}(undef, Nb, Nb)
+        _S⁻¹B₁ᵀ₂ = zeros(length(_f_buf), Nb)
+        _S₀fact = _computeS₀fact(S₀, ibp._Sfact, B₁ᵀ₂cols, B₂₂rows, _S⁻¹B₁ᵀ₂)
         _ψ₀_buf = zeros(Nb)
         _sol_buf = IBPoissonSolution{TU,TF}(TU(),TF())
-        new{TU,TF,TB1T_2,TB2_2}(ibp, B₁ᵀpart2, B₂part2, TF(), TF(), _S₀fact, _ψ₀_buf, _sol_buf)
+        new{Nb,TU,TF}(ibp, B₁ᵀ₂cols, B₂₂rows, _f_buf, _f_buf2, _S₀fact, _ψ₀_buf, _sol_buf)
     end
 end
 
-struct SteadyRegularizedIBPoisson{TU,TF,TB1T_2,TB2_2} <: AbstractPotentialFlowSystem{TU}
-    cibp::ConstrainedIBPoisson{TU,TF,TB1T_2,TB2_2}
+struct SteadyRegularizedIBPoisson{Nb,Ne,TU,TF} <: AbstractPotentialFlowSystem{TU}
+    cibp::ConstrainedIBPoisson{Nb,TU,TF}
     f₀::TF
 
-    function SteadyRegularizedIBPoisson(L::CartesianGrids.Laplacian, R::RegularizationMatrix{TU,TF}, E::InterpolationMatrix{TU,TF}, B₁ᵀpart2::TB1T_2, B₂part2::TB2_2) where {TU,TF,TB1T_2,TB2_2}
+    function SteadyRegularizedIBPoisson(L::CartesianGrids.Laplacian, R::RegularizationMatrix{TU,TF}, E::InterpolationMatrix{TU,TF}, one_vec::Vector{TF}, e_vec::Vector{TF}) where {TU,TF}
+
+        Nb = length(one_vec) # number of bodies
+        Ne = length(e_vec) # number of edges
 
         _TU_buf = TU()
 
@@ -76,8 +82,8 @@ struct SteadyRegularizedIBPoisson{TU,TF,TB1T_2,TB2_2} <: AbstractPotentialFlowSy
 
         R̃ = deepcopy(R)
         R̃.M .= R̃.M*Diagonal(f₀)
-        cibp = ConstrainedIBPoisson(L, R̃, E, B₁ᵀpart2, B₂part2)
-        new{TU,TF,TB1T_2,TB2_2}(cibp, f₀)
+        cibp = ConstrainedIBPoisson(L, R̃, E, one_vec, e_vec)
+        new{Nb,Ne,TU,TF}(cibp, f₀)
     end
 end
 
@@ -169,18 +175,21 @@ function ldiv!(sol::TS, sys::IBPoisson{TU,TF}, rhs::TR; zerow=false, zeroψb=fal
     return sol
 end
 
-function ldiv!(sol::TS, sys::ConstrainedIBPoisson{TU,TF,TB1T_2,TB2_2}, rhs::ConstrainedIBPoissonRHS) where {TU,TF,TB1T_2,TB2_2,TS}
+function ldiv!(sol::TS, sys::ConstrainedIBPoisson{Nb,TU,TF}, rhs::ConstrainedIBPoissonRHS) where {Nb,TU,TF,TS}
 
     # fstar = S⁻¹(ψb+EL⁻¹)
     ldiv!(sol, sys.ibp, rhs, onlyf=true)
 
     # ψ₀ = S₀\(Γb-B₂₂*fstar)
-    mul!(sys._ψ₀_buf, sys.B₂part2, sol.f)
+    for b in 1:Nb
+        sys._ψ₀_buf[b] = dot(sys.B₂₂rows[b]',sol.f)
+    end
     sys._ψ₀_buf .= rhs.fconstraintRHS .- sys._ψ₀_buf
     ldiv!(sol.ψ₀, sys._S₀fact, sys._ψ₀_buf)
 
     # f = fstar - S⁻¹(B₁ᵀ₂*ψ₀)
-    mul!(sys._f_buf, sys.B₁ᵀpart2, sol.ψ₀)
+    sys._f_buf .= 0.0
+    _addlincomboto!(sys._f_buf, sol.ψ₀, sys.B₁ᵀ₂cols)
     ldiv!(sys._f_buf2, sys.ibp._Sfact, sys._f_buf)
     sol.f .-= sys._f_buf2
 
@@ -189,7 +198,7 @@ function ldiv!(sol::TS, sys::ConstrainedIBPoisson{TU,TF,TB1T_2,TB2_2}, rhs::Cons
 
 end
 
-function ldiv!(sol::TS, sys::SteadyRegularizedIBPoisson{TU,TF,TB1T_2,TB2_2}, rhs::TR) where {TU,TF,TB1T_2,TB2_2,TS,TR}
+function ldiv!(sol::TS, sys::SteadyRegularizedIBPoisson{Nb,TU,TF}, rhs::TR) where {Nb,TU,TF,TS,TR}
 
     ldiv!(sol, sys.cibp, rhs)
     sol.f .*= sys.f₀
@@ -234,22 +243,17 @@ function _addlincomboto!(s,c,A)
     end
 end
 
-# function _computeS₀fact(S₀,Sfact,B₁ᵀ₂cols,B₂₁rows,_S⁻¹B₁ᵀ₂)
-#     for c in 1:length(B₁ᵀ₂cols)
-#         ldiv!(view(_S⁻¹B₁ᵀ₂,:,c),Sfact,B₁ᵀ₂cols[c])
-#     end
-#
-#     for r in 1:length(B₂₁rows)
-#         mul!(view(S₀,r,:),B₂₁rows[r],TB1T_2_buf)
-#     end
-#
-#     S₀fact = factorize(S₀)
-# end
+function _computeS₀fact(S₀,Sfact,B₁ᵀ₂cols,B₂₁rows,_S⁻¹B₁ᵀ₂)
+    for c in 1:length(B₁ᵀ₂cols)
+        ldiv!(view(_S⁻¹B₁ᵀ₂,:,c),Sfact,B₁ᵀ₂cols[c])
+    end
 
-function _computeS₀fact(S₀,Sfact,B₁ᵀpart2,B₂part2,TB1T_2_buf)
-    ldiv!(TB1T_2_buf,Sfact,B₁ᵀpart2)
-    mul!(S₀,B₂part2,TB1T_2_buf)
+    for r in 1:length(B₂₁rows)
+        mul!(view(S₀,r:r,:),B₂₁rows[r]',_S⁻¹B₁ᵀ₂) # need to find better solution for this indexing
+    end
+
     S₀ .= .-S₀
+
     S₀fact = factorize(S₀)
 end
 
