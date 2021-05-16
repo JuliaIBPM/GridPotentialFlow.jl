@@ -2,11 +2,17 @@ export PotentialFlowSolution
 
 abstract type AbstractPotentialFlowSolution end
 
-struct BasicPotentialFlowSolution{TU,TF} <: AbstractPotentialFlowSolution
+struct IBPoissonSolution{TU,TF} <: AbstractPotentialFlowSolution
     ψ::TU
     f::TF
 end
 
+struct ConstrainedIBPoissonSolution{T,TU,TF} <: AbstractPotentialFlowSolution
+    ψ::TU
+    f::TF
+    ψ₀::Vector{T}
+    δΓ_vec::Vector{T}
+end
 
 
 

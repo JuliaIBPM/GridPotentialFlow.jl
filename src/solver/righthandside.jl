@@ -1,19 +1,5 @@
 export PotentialFlowRHS
 
-
-struct BasicPotentialFlowRHS{TU,TF}
-    w::TU
-    ψb::TF
-end
-
-
-
-
-
-
-
-
-
 const f̃Limit = Float64
 
 struct f̃Limits
@@ -25,6 +11,33 @@ struct f̃Limits
         new(f̃sorted[1],f̃sorted[2])
     end
 end
+
+
+
+
+
+
+
+struct IBPoissonRHS{TU,TF}
+    w::TU
+    ψb::TF
+end
+
+struct ConstrainedIBPoissonRHS{T,TU,TF}
+    w::TU
+    ψb::TF
+    fconstraintRHS::Vector{T}
+end
+
+struct UnsteadyRegularizedIBPoissonRHS{TU,TF}
+    w::TU
+    ψb::TF
+    f̃lim_vec::Vector{f̃Limits}
+    Γw_vec::Vector{Float64}
+end
+
+
+
 
 # Multiply and divide by a constant
 function (*)(p::f̃Limits,c::Number)
