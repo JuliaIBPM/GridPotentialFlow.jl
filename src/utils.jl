@@ -15,30 +15,17 @@ function _computecrossproductsurfaceintegral(body::Body, z)
     return [ry'*z, -rx'*z]
 end
 
-function _computebodypointsvelocity!(Ubvec, Ub, bodies)
-
-    # Ensure that Ub is an array whose length equals to the number of bodies
-    if Ub isa Tuple
-        Ub = [Ub]
-    end
-    if isnothing(Ub)
-        Ub = fill((0.0,0.0),length(bodies))
-    end
-
-    @assert length(Ub) == length(bodies)
-
-    Ubvec.u .= 0
-    Ubvec.v .= 0
-
-    for i in 1:length(bodies)
-        Ubvec.u[getrange(bodies,i)] .+= Ub[i][1]
-        Ubvec.v[getrange(bodies,i)] .+= Ub[i][2]
-    end
-end
-
 function _computef̃limit(SP::SuctionParameter, plate::Plate, Γ₀)
     f̃ = -SP*2π*plate.len/Γ₀
     return f̃
+end
+
+function _computef̃limit(SP::SuctionParameterRange, args...)
+    if SP.σmax == SP.σmin
+        _computef̃limit(SP.σmax, args...)
+    else
+        throw(ArgumentError("Ambiguous SuctionParameterRange provided for steady state regularization"))
+    end
 end
 
 function _computef̃limits(SP::SuctionParameter, args...)

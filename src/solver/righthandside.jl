@@ -12,11 +12,16 @@ struct f̃Limits
     end
 end
 
+# Multiply and divide by a constant
+function (*)(p::f̃Limits,c::Number)
+  return f̃Limits(c*p.min,c*p.max)
+end
 
+(*)(c::Number,p::f̃Limits) = *(p,c)
 
-
-
-
+function (/)(p::f̃Limits,c::Number)
+  return f̃Limits(p.min/c, p.max/c)
+end
 
 struct IBPoissonRHS{TU,TF}
     w::TU
@@ -36,71 +41,20 @@ struct UnsteadyRegularizedIBPoissonRHS{TU,TF}
     Γw_vec::Vector{Float64}
 end
 
-
-
-
-# Multiply and divide by a constant
-function (*)(p::f̃Limits,c::Number)
-  return f̃Limits(c*p.min,c*p.max)
-end
-
-(*)(c::Number,p::f̃Limits) = *(p,c)
-
-function (/)(p::f̃Limits,c::Number)
-  return f̃Limits(p.min/c, p.max/c)
-end
-
-struct UnregularizedPotentialFlowRHS{TU,TF}
-    w::TU
-    ψb::TF
-    Γb::Vector{Float64}
-end
-
-struct SteadyRegularizedPotentialFlowRHS{TU,TF}
-    w::TU
-    ψb::TF
-    f̃lim_kvec::Vector{f̃Limit}
-end
-
-mutable struct UnsteadyRegularizedPotentialFlowRHS{TU,TF}
-    w::TU
-    ψb::TF
-    f̃lim_kvec::Vector{f̃Limits}
-    Γw::Float64
-end
-
-function PotentialFlowRHS(w::AbstractMatrix,ψb::AbstractVector;Γ::Union{Nothing,Real,Vector{<:Real}}=nothing)
-    if isnothing(Γ)
-        Γ = -sum(w)
-    end
-    return UnregularizedPotentialFlowRHS(w,ψb,[Γ...])
-end
-
-function PotentialFlowRHS(w::AbstractMatrix,ψb::AbstractVector,f̃lim_kvec::Vector{f̃Limit})
-    return SteadyRegularizedPotentialFlowRHS(w,ψb,f̃lim_kvec)
-end
-
-function PotentialFlowRHS(w::AbstractMatrix,ψb::AbstractVector,f̃lim_kvec::Vector{f̃Limits},Γw::Real)
-    return UnsteadyRegularizedPotentialFlowRHS(w,ψb,f̃lim_kvec,Γw)
-end
-
-function _scaletoindexspace!(rhs::UnregularizedPotentialFlowRHS,Δx::Real)
+function _scaletoindexspace!(rhs::IBPoissonRHS, Δx::Real)
     rhs.w .*= Δx
     rhs.ψb ./= Δx
-    if !isnothing(rhs.Γb)
-        rhs.Γb ./= Δx
-    end
 end
 
-function _scaletoindexspace!(rhs::SteadyRegularizedPotentialFlowRHS,Δx::Real)
+function _scaletoindexspace!(rhs::ConstrainedIBPoissonRHS, Δx::Real)
     rhs.w .*= Δx
     rhs.ψb ./= Δx
-    rhs.f̃lim_kvec ./= Δx
+    rhs.fconstraintRHS ./= Δx
 end
 
-function _scaletoindexspace!(rhs::UnsteadyRegularizedPotentialFlowRHS,Δx::Real)
+function _scaletoindexspace!(rhs::UnsteadyRegularizedIBPoissonRHS, Δx::Real)
     rhs.w .*= Δx
     rhs.ψb ./= Δx
-    rhs.f̃lim_kvec ./= Δx  # Use same scaling for σ as for f
-    rhs.Γw /= Δx
+    rhs.f̃lim_vec ./= Δx  # Use same scaling for σ as for f
+    rhs.Γw_vec ./= Δx
 end

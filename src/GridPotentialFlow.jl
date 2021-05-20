@@ -2,15 +2,16 @@ module GridPotentialFlow
 
 using Reexport
 using UnPack
-using RecursiveArrayTools
+using StaticArrays
+using StructArrays
 using DocStringExtensions
 
 @reexport using CartesianGrids
 @reexport using RigidBodyTools
-@reexport using ConstrainedSystems
 
 include("bodyunitvectors.jl")
 include("modelparameters.jl")
+include("bodies.jl")
 include("utils.jl")
 
 include("solver/righthandside.jl")
