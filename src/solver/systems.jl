@@ -96,6 +96,7 @@ struct UnsteadyRegularizedIBPoisson{Nb,Ne,TU,TF} <: AbstractPotentialFlowSystem{
     ibp::IBPoisson{TU,TF}
     one_vec::Vector{TF}
     e_vec::Vector{TF}
+    vidx_vec::Vector{Vector{Int}}
     f₀::TF
     f₀_vec::Vector{TF}
     f̃₀_vec::Vector{TF}
@@ -109,7 +110,7 @@ struct UnsteadyRegularizedIBPoisson{Nb,Ne,TU,TF} <: AbstractPotentialFlowSystem{
     _r₂_buf::Vector{Float64}
     _y_buf::Vector{Float64}
 
-    function UnsteadyRegularizedIBPoisson(L::CartesianGrids.Laplacian, R::RegularizationMatrix{TU,TF}, E::InterpolationMatrix{TU,TF}, one_vec::Vector{TF}, e_vec::Vector{TF}) where {TU,TF}
+    function UnsteadyRegularizedIBPoisson(L::CartesianGrids.Laplacian, R::RegularizationMatrix{TU,TF}, E::InterpolationMatrix{TU,TF}, one_vec::Vector{TF}, e_vec::Vector{TF}, vidx_vec::Vector{Vector{Int}}) where {TU,TF}
         Nb = length(one_vec) # number of bodies
         Ne = length(e_vec) # number of edges
 
@@ -143,7 +144,7 @@ struct UnsteadyRegularizedIBPoisson{Nb,Ne,TU,TF} <: AbstractPotentialFlowSystem{
         _r₂_buf = zeros(Nb+Ne)
         _y_buf = zeros(Nb+Ne)
 
-        new{Nb,Ne,TU,TF}(ibp, one_vec, e_vec, f₀, f₀_vec, f̃₀_vec, f̃_vec, Γ₀, d_vec, _activef̃lim_vec, _TU_buf, _f_buf, _Souter, _r₂_buf, _y_buf)
+        new{Nb,Ne,TU,TF}(ibp, one_vec, e_vec, vidx_vec, f₀, f₀_vec, f̃₀_vec, f̃_vec, Γ₀, d_vec, _activef̃lim_vec, _TU_buf, _f_buf, _Souter, _r₂_buf, _y_buf)
     end
 end
 
@@ -290,12 +291,14 @@ function _computeδΓandψ₀!(sol::TS, sys::UnsteadyRegularizedIBPoisson{Nb,Ne,
     end
     sys._Souter .= .-sys._Souter
     for i in 1:Nb
-        sys._Souter[end-Nb+i,end-Nb+i] += 1.0
+        for vid in sys.vidx_vec[i]
+            sys._Souter[end-Nb+i,end-Ne+vid] += 1.0
+        end
     end
 
     ldiv!(sys._y_buf, factorize(sys._Souter), sys._r₂_buf)
-    sol.ψ₀ .= sys._y_buf[1:Ne]
-    sol.δΓ_vec .= sys._y_buf[end-Nb+1:end]
+    sol.ψ₀ .= sys._y_buf[1:Nb]
+    sol.δΓ_vec .= sys._y_buf[Nb+1:end]
 end
 
 function _findactivef̃limit(e::BodyUnitVector, f̃::TF, f̃lim::f̃Limits) where {TF}

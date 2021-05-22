@@ -68,6 +68,15 @@ end
 """
 $(TYPEDSIGNATURES)
 
+Returns a vector of the bound circulation values of the bodies in `b`.
+"""
+function getΓb(b::AbstractVector{PotentialFlowBody})
+    return map(x->x.Γb,b)
+end
+
+"""
+$(TYPEDSIGNATURES)
+
 Returns the indices in the global set of surface point data of the regularized points of body `i` in `b`.
 """
 function getregularizededges(b::AbstractVector{PotentialFlowBody},i::Int)
@@ -97,7 +106,7 @@ Returns the indices in the global set of surface point data of all regularized p
 function subtractcirculation!(b::AbstractVector{PotentialFlowBody}, δΓ_vec::AbstractVector)
     i = 0
     for j in 1:length(b)
-        for k in 1:length(b.edges)
+        for k in 1:length(b[j].edges)
             i += 1
             b[j].Γb -= δΓ_vec[i]
         end
@@ -105,7 +114,7 @@ function subtractcirculation!(b::AbstractVector{PotentialFlowBody}, δΓ_vec::Ab
 end
 
 function computebodypointsvelocity!(v::AbstractVector, b::AbstractVector{PotentialFlowBody}, dir::Int)
-    for i in length(b)
+    for i in 1:length(b)
         vi = view(v,getrange(b,i))
         vi .= b[i].Ub[dir]
     end

@@ -31,7 +31,7 @@ mutable struct VortexModel{Nb,Ne,TS<:AbstractPotentialFlowSystem}
     """g: The grid on which the vortex model is defined."""
     g::PhysicalGrid
     """bodies: Bodies in the vortex model."""
-    bodies::StructVector{PotentialFlowBody}
+    bodies::Vector{PotentialFlowBody}
     """vortices: Point vortices in the vortex model."""
     vortices::StructVector{Vortex}
     """U∞: Uniform flow in the vortex model."""
@@ -55,7 +55,7 @@ $(TYPEDSIGNATURES)
 
 Constructs a vortex model using the given function.
 """
-function VortexModel(g::PhysicalGrid; bodies::StructVector{PotentialFlowBody}, vortices::StructVector{Vortex}=StructVector(Vortex[]), U∞::Tuple{Float64,Float64}=(0.0,0.0))
+function VortexModel(g::PhysicalGrid; bodies::Vector{PotentialFlowBody}, vortices::StructVector{Vortex}=StructVector(Vortex[]), U∞::Tuple{Float64,Float64}=(0.0,0.0))
 
     vortices = deepcopy(vortices)
 
@@ -97,7 +97,13 @@ function VortexModel(g::PhysicalGrid; bodies::StructVector{PotentialFlowBody}, v
         if isempty(vortices) # With regularized edges, but no vortices. This is a steady case.
             system = SteadyRegularizedIBPoisson(L, Rbmat, Ebmat, one_vec, e_vec)
         else # With regularized edges and vortices. This is an unsteady case with vortex shedding.
-            system = UnsteadyRegularizedIBPoisson(L, Rbmat, Ebmat, one_vec, e_vec)
+            vidx_vec = Vector{Vector{Int64}}()
+            vidx = collect(1:Ne)
+            for i in 1:Nb
+                vidx_i = [pop!(vidx) for k in 1:length(bodies[i].edges)]
+                push!(vidx_vec, vidx_i)
+            end
+            system = UnsteadyRegularizedIBPoisson(L, Rbmat, Ebmat, one_vec, e_vec, vidx_vec)
         end
     end
 
@@ -249,7 +255,7 @@ function solvesystem!(sol::ConstrainedIBPoissonSolution, vm::VortexModel{Nb,0,Co
 
     _computeψboundaryconditions!(vm._ψb, vm)
     vm._w .= wphysical
-    Γb = deepcopy(vm.bodies.Γb)
+    Γb = deepcopy(getΓb(vm.bodies))
 
     rhs = ConstrainedIBPoissonRHS(vm._w, vm._ψb, Γb)
     _scaletoindexspace!(rhs,cellsize(vm.g))
@@ -278,9 +284,10 @@ function solvesystem!(sol::ConstrainedIBPoissonSolution, vm::VortexModel{Nb,Ne,S
 
     _addψ∞!(sol.ψ,vm) # Add the uniform flow to the approximation to the continuous stream function field
 
-    for i in 1:Nb
-        vm.bodies[i].Γb = sum(view(sol.f,getrange(vm.bodies,i)))
-    end
+    # This next for loop should be done in the script
+    # for i in 1:Nb
+    #     vm.bodies[i].Γb = sum(view(sol.f,getrange(vm.bodies,i)))
+    # end
 
     return sol
 end
@@ -295,7 +302,7 @@ function solvesystem!(sol::ConstrainedIBPoissonSolution, vm::VortexModel{Nb,Ne,U
     for i in 1:Nb
         append!(f̃lim_vec, _computef̃limits.(vm.bodies[i].σ, Ref(vm.bodies[i].points), sum(vm.system.f₀_vec[i])))
     end
-    Γw = -vm.bodies.Γb # Γw = ∫wdA
+    Γw = -getΓb(vm.bodies) # Γw = ∫wdA
 
     rhs = UnsteadyRegularizedIBPoissonRHS(vm._w, vm._ψb, f̃lim_vec, Γw)
     _scaletoindexspace!(rhs,cellsize(vm.g))
@@ -308,7 +315,7 @@ function solvesystem!(sol::ConstrainedIBPoissonSolution, vm::VortexModel{Nb,Ne,U
     for i in 1:Ne
         vm.vortices[end-Ne+i].Γ = sol.δΓ_vec[i]
     end
-    subtractcirculation!(vm.bodies, sol.δΓ_vec)
+    # subtractcirculation!(vm.bodies, sol.δΓ_vec) # should be done in the script
 
     return sol
 end
@@ -336,7 +343,7 @@ end
 
 function solvesystem(vm::VortexModel{Nb,Ne,UnsteadyRegularizedIBPoisson{Nb,Ne,TU,TF}}, wphysical::Nodes{Dual}) where {Nb,Ne,TU,TF}
 
-    sol = ConstrainedIBPoissonSolution(vm._ψ, vm._f, zeros(Float64,Nb), zeros(Float64,Nb))
+    sol = ConstrainedIBPoissonSolution(vm._ψ, vm._f, zeros(Float64,Nb), zeros(Float64,Ne))
     solvesystem!(sol, vm, wphysical)
 
     return sol
