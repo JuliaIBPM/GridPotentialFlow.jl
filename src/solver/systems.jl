@@ -1,14 +1,8 @@
-import LinearAlgebra: I, \, ldiv!, mul!, norm, LU, factorize, Factorization, dot
-import SparseArrays: AbstractSparseMatrix, SparseMatrixCSC, sparse
-import Statistics: mean
+import LinearAlgebra: \, ldiv!, mul!, norm, LU, factorize, Factorization, dot
 
 using LinearMaps
 
-export UnregularizedPotentialFlowSystem, RegularizedPotentialFlowSystem, PotentialFlowSystem, setd_kvec!
-
 abstract type AbstractPotentialFlowSystem{TU} end
-
-abstract type PotentialFlowSystem end
 
 struct IBPoisson{TU,TF} <: AbstractPotentialFlowSystem{TU}
     L::CartesianGrids.Laplacian
@@ -44,14 +38,12 @@ struct ConstrainedIBPoisson{Nb,TU,TF} <: AbstractPotentialFlowSystem{TU}
     B₁ᵀ₂cols::Vector{TF}
     B₂₂rows::Vector{TF}
     _f_buf::TF
-    _f_buf2::TF
     _S₀fact::Union{Factorization,Float64}
     _ψ₀_buf::Vector{Float64}
     _sol_buf::IBPoissonSolution{TU,TF}
 
     function ConstrainedIBPoisson(L::CartesianGrids.Laplacian, R::RegularizationMatrix{TU,TF}, E::InterpolationMatrix{TU,TF}, B₁ᵀ₂cols::Vector{TF}, B₂₂rows::Vector{TF}) where {TU,TF}
         _f_buf = TF()
-        _f_buf2 = TF()
         Nb = length(B₁ᵀ₂cols) # number of bodies
         ibp = IBPoisson(L,R,E)
         S₀ = Matrix{Float64}(undef, Nb, Nb)
@@ -59,7 +51,7 @@ struct ConstrainedIBPoisson{Nb,TU,TF} <: AbstractPotentialFlowSystem{TU}
         _S₀fact = _computeS₀fact(S₀, ibp._Sfact, B₁ᵀ₂cols, B₂₂rows, _S⁻¹B₁ᵀ₂)
         _ψ₀_buf = zeros(Nb)
         _sol_buf = IBPoissonSolution{TU,TF}(TU(),TF())
-        new{Nb,TU,TF}(ibp, B₁ᵀ₂cols, B₂₂rows, _f_buf, _f_buf2, _S₀fact, _ψ₀_buf, _sol_buf)
+        new{Nb,TU,TF}(ibp, B₁ᵀ₂cols, B₂₂rows, _f_buf, _S₀fact, _ψ₀_buf, _sol_buf)
     end
 end
 
@@ -118,7 +110,6 @@ struct UnsteadyRegularizedIBPoisson{Nb,Ne,TU,TF} <: AbstractPotentialFlowSystem{
 
         _TU_buf = TU()
         _f_buf = TF()
-        _f_buf2 = TF()
 
         f₀ = TF()
 
@@ -148,7 +139,7 @@ struct UnsteadyRegularizedIBPoisson{Nb,Ne,TU,TF} <: AbstractPotentialFlowSystem{
     end
 end
 
-function ldiv!(sol::TS, sys::IBPoisson{TU,TF}, rhs::TR; zerow=false, zeroψb=false, useprovidedf=false, onlyf=false) where {TU,TF,TS,TR}
+function ldiv!(sol::TS, sys::IBPoisson{TU,TF}, rhs::TR; zerow=false, zeroψb=false, useprovidedf=false, onlyf=false) where {TU,TF,TS<:AbstractIBPoissonSolution,TR}
 
     if useprovidedf # in this case we use the f provided in sol.f and only calculate ψ = L⁻¹(-w-Rf)
         mul!(sys._B₁ᵀf, sys.R, sol.f)
@@ -178,7 +169,7 @@ function ldiv!(sol::TS, sys::IBPoisson{TU,TF}, rhs::TR; zerow=false, zeroψb=fal
     return sol
 end
 
-function ldiv!(sol::TS, sys::ConstrainedIBPoisson{Nb,TU,TF}, rhs::ConstrainedIBPoissonRHS) where {Nb,TU,TF,TS}
+function ldiv!(sol::ConstrainedIBPoissonSolution{TU,TF}, sys::ConstrainedIBPoisson{Nb,TU,TF}, rhs::ConstrainedIBPoissonRHS) where {Nb,TU,TF,TS}
 
     # fstar = S⁻¹(ψb+EL⁻¹)
     ldiv!(sol, sys.ibp, rhs, onlyf=true)
@@ -193,22 +184,22 @@ function ldiv!(sol::TS, sys::ConstrainedIBPoisson{Nb,TU,TF}, rhs::ConstrainedIBP
     # f = fstar - S⁻¹(B₁ᵀ₂*ψ₀)
     sys._f_buf .= 0.0
     _addlincomboto!(sys._f_buf, sol.ψ₀, sys.B₁ᵀ₂cols)
-    ldiv!(sys._f_buf2, sys.ibp._Sfact, sys._f_buf)
-    sol.f .-= sys._f_buf2
+    ldiv!(sys.ibp._Sfact, sys._f_buf)
+    sol.f .-= sys._f_buf
 
     # ψ = L⁻¹(-w - Rf)
     ldiv!(sol, sys.ibp, rhs, useprovidedf=true)
 
 end
 
-function ldiv!(sol::TS, sys::SteadyRegularizedIBPoisson{Nb,Ne,TU,TF}, rhs::TR) where {Nb,Ne,TU,TF,TS,TR}
+function ldiv!(sol::ConstrainedIBPoissonSolution{TU,TF}, sys::SteadyRegularizedIBPoisson{Nb,Ne,TU,TF}, rhs::ConstrainedIBPoissonRHS) where {Nb,Ne,TU,TF,TS<:AbstractIBPoissonSolution}
 
     ldiv!(sol, sys.cibp, rhs)
     sol.f .*= sys.f₀
 
 end
 
-function ldiv!(sol::TS, sys::UnsteadyRegularizedIBPoisson{Nb,Ne,TU,TF}, rhs::TR) where {Nb,Ne,TU,TF,TS,TR}
+function ldiv!(sol::ConstrainedIBPoissonSolution{TU,TF}, sys::UnsteadyRegularizedIBPoisson{Nb,Ne,TU,TF}, rhs::UnsteadyRegularizedIBPoissonRHS{TU,TF}) where {Nb,Ne,TU,TF}
 
     ldiv!(sol, sys.ibp, rhs, onlyf=true)
 
@@ -264,7 +255,11 @@ function ldiv!(x::ScalarData ,A::LU, f::ScalarData)
     ldiv!(x.data,A,f.data)
 end
 
-function _computeδΓandψ₀!(sol::TS, sys::UnsteadyRegularizedIBPoisson{Nb,Ne,TU,TF}, rhs::TR, sheddingedges::Vector{Int}) where {Nb,Ne,TU,TF,TS,TR}
+function ldiv!(A::LU, f::ScalarData)
+    ldiv!(A,f.data)
+end
+
+function _computeδΓandψ₀!(sol::ConstrainedIBPoissonSolution{TU,TF}, sys::UnsteadyRegularizedIBPoisson{Nb,Ne,TU,TF}, rhs::UnsteadyRegularizedIBPoissonRHS{TU,TF}, sheddingedges::Vector{Int}) where {Nb,Ne,TU,TF}
     sys._Souter .= 0.0
     for i in 1:Ne
         if i in sheddingedges
@@ -301,7 +296,7 @@ function _computeδΓandψ₀!(sol::TS, sys::UnsteadyRegularizedIBPoisson{Nb,Ne,
     sol.δΓ_vec .= sys._y_buf[Nb+1:end]
 end
 
-function _findactivef̃limit(e::BodyUnitVector, f̃::TF, f̃lim::f̃Limits) where {TF}
+function _findactivef̃limit(e::AbstractVector, f̃::TF, f̃lim::f̃Limits) where {TF}
 
     if e'*f̃ < f̃lim.min
         activef̃lim = f̃lim.min
