@@ -1,6 +1,6 @@
 import Base: show, length, collect
 
-export PotentialFlowBody
+export PotentialFlowBody, subtractcirculation!
 
 """
 $TYPEDEF
@@ -113,7 +113,7 @@ function subtractcirculation!(b::AbstractVector{PotentialFlowBody}, δΓ_vec::Ab
     end
 end
 
-function computebodypointsvelocity!(v::AbstractVector, b::AbstractVector{PotentialFlowBody}, dir::Int)
+function bodypointsvelocity!(v::AbstractVector, b::AbstractVector{PotentialFlowBody}, dir::Int)
     for i in 1:length(b)
         vi = view(v,getrange(b,i))
         vi .= b[i].Ub[dir]

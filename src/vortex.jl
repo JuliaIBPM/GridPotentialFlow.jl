@@ -1,4 +1,4 @@
-export Vortex, getstrengths, getpositions, setpositions!
+export Vortex
 
 """
 $(TYPEDEF)
@@ -21,7 +21,7 @@ end
 """
 $(TYPEDSIGNATURES)
 
-Returns the strengths of all point vortices in `vl` as `ScalarData`.
+Returns the strengths of all point vortices in the `StructArray` `vl` as `ScalarData`.
 """
 function getstrengths(vl::StructArray{Vortex})
     return ScalarData(vl.Γ)
@@ -30,7 +30,7 @@ end
 """
 $(TYPEDSIGNATURES)
 
-Returns the positions of all point vortices in `vl` as `VectorData`.
+Returns the positions of all point vortices in the `StructArray` `vl` as `VectorData`.
 """
 function getpositions(vl::StructArray{Vortex})
     return VectorData(vl.x,vl.y)
@@ -39,7 +39,7 @@ end
 """
 $(TYPEDSIGNATURES)
 
-Sets the `x` and `y` fields of the point vortices in `vl` to the entries of `xnew` and `ynew`, respectively.
+Sets the `x` and `y` fields of the point vortices in the `StructArray` `vl` to the entries of `xnew` and `ynew`, respectively.
 """
 function setpositions!(vl::StructArray{Vortex}, xnew, ynew)
     vl.x .= xnew
