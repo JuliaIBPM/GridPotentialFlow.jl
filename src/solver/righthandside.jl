@@ -1,19 +1,29 @@
-struct IBPoissonRHS{TU,TF}
+abstract type AbstractIBPoissonRHS{TU,TF} end
+
+struct PoissonRHS{TU}
+    w::TU
+end
+
+struct IBPoissonRHS{TU,TF} <: AbstractIBPoissonRHS{TU,TF}
     w::TU
     ψb::TF
 end
 
-struct ConstrainedIBPoissonRHS{T,TU,TF}
+struct ConstrainedIBPoissonRHS{T,TU,TF} <: AbstractIBPoissonRHS{TU,TF}
     w::TU
     ψb::TF
     fconstraintRHS::Vector{T}
 end
 
-struct UnsteadyRegularizedIBPoissonRHS{TU,TF}
+struct UnsteadyRegularizedIBPoissonRHS{TU,TF} <: AbstractIBPoissonRHS{TU,TF}
     w::TU
     ψb::TF
     f̃lim_vec::Vector{f̃Limits}
     Γw_vec::Vector{Float64}
+end
+
+function _scaletoindexspace!(rhs::PoissonRHS, Δx::Real)
+    rhs.w .*= Δx
 end
 
 function _scaletoindexspace!(rhs::IBPoissonRHS, Δx::Real)

@@ -45,3 +45,16 @@ function setpositions!(vl::StructArray{Vortex}, xnew, ynew)
     vl.x .= xnew
     vl.y .= ynew
 end
+
+"""
+$(TYPEDSIGNATURES)
+
+Sets the `Γ` field of the point vortices in the `StructArray` `vl` to the entries of `Γnew`.
+"""
+function setstrengths!(vl::StructArray{Vortex}, Γnew, idx=nothing)
+    if isnothing(idx)
+        vl.Γ .= Γnew
+    else
+        vl.Γ[idx] .= Γnew
+    end
+end
