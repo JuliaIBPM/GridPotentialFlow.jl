@@ -3,6 +3,7 @@ module GridPotentialFlow
 using Reexport
 using StructArrays
 using DocStringExtensions
+using RecipesBase
 
 @reexport using CartesianGrids
 @reexport using RigidBodyTools

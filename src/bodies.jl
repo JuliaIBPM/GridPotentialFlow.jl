@@ -1,6 +1,6 @@
 import Base: show, length, collect
 
-export PotentialFlowBody, subtractcirculation!
+export PotentialFlowBody, subtractcirculation!, getU, getΩ, getΓ, setU, setΩ, setΓ
 
 """
 $TYPEDEF
@@ -10,12 +10,12 @@ Defines a rigid body for `VortexModel` in `GridPotentialFlow.jl`.
 mutable struct PotentialFlowBody
     """body: """
     points::Body
-    """Ub: Linear velocity of the body."""
-    Ub::Tuple{Float64,Float64}
-    """Ωb: Rotational velocity of the body."""
-    Ωb::Float64
-    """Γb: Current circulation about the body."""
-    Γb::Float64
+    """U: Linear velocity of the body."""
+    U::Tuple{Float64,Float64}
+    """Ω: Rotational velocity of the body."""
+    Ω::Float64
+    """Γ: Current circulation about the body."""
+    Γ::Float64
     """regidx: Array of the indices of any regularized edges."""
     edges::Vector{Int}
     """σ: Array of suction parameters or suction parameter ranges associated with the entries of `edges`."""
@@ -25,9 +25,9 @@ end
 """
 $(TYPEDSIGNATURES)
 
-Constructs a potential flow body with shape `b`, linear velocity `Ub`, rotational velocity `Ωb`, and initial circulation `Γb`. Edges that should be regularized can be specified in `edges` and their suction parameter ranges in `σ`, which defaults to zero for each regularized edge.
+Constructs a potential flow body with shape `b`, linear velocity `U`, rotational velocity `Ω`, and initial circulation `Γ`. Edges that should be regularized can be specified in `edges` and their suction parameter ranges in `σ`, which defaults to zero for each regularized edge.
 """
-function PotentialFlowBody(b::Body{N,C}; Ub = (0.0,0.0), Ωb = 0.0, Γb = 0.0, edges = Int64[], σ = SuctionParameterRange[]) where {N,C}
+function PotentialFlowBody(b::Body{N,C}; U = (0.0,0.0), Ω = 0.0, Γ = 0.0, edges = Int64[], σ = SuctionParameterRange[]) where {N,C}
 
     Ne = length(edges)
 
@@ -37,7 +37,7 @@ function PotentialFlowBody(b::Body{N,C}; Ub = (0.0,0.0), Ωb = 0.0, Γb = 0.0, e
         println("Not enough suction parameters provided. Setting all suction parameters to zero.")
     end
 
-    return PotentialFlowBody(b,Ub,Ωb,Γb,edges,σ)
+    return PotentialFlowBody(b,U,Ω,Γ,edges,σ)
 end
 
 """
@@ -68,10 +68,55 @@ end
 """
 $(TYPEDSIGNATURES)
 
-Returns a vector of the bound circulation values of the bodies in `b`.
+Returns the linear velocity of the body `b`.
 """
-function getΓb(b::AbstractVector{PotentialFlowBody})
-    return map(x->x.Γb,b)
+function getU(b::PotentialFlowBody)
+    return b.U
+end
+
+"""
+$(TYPEDSIGNATURES)
+
+Returns the rotational velocity of the body `b`.
+"""
+function getΩ(b::PotentialFlowBody)
+    return b.Ω
+end
+
+"""
+$(TYPEDSIGNATURES)
+
+Returns the bound circulation of the body `b`.
+"""
+function getΓ(b::PotentialFlowBody)
+    return b.Γ
+end
+
+"""
+$(TYPEDSIGNATURES)
+
+Sets the linear velocity of the body `b` to `U`.
+"""
+function setU(b::PotentialFlowBody, U::Tuple{Float64,Float64})
+    b.U = U
+end
+
+"""
+$(TYPEDSIGNATURES)
+
+Sets the rotational velocity of the body `b` to `Ω`.
+"""
+function setΩ(b::PotentialFlowBody, Ω::Float64)
+    b.Ω = Ω
+end
+
+"""
+$(TYPEDSIGNATURES)
+
+Sets the bound circulation of the body `b` to `Γ`.
+"""
+function setΓ(b::PotentialFlowBody, Γ::Float64)
+    b.Γ = Γ
 end
 
 """
@@ -108,7 +153,7 @@ function subtractcirculation!(b::AbstractVector{PotentialFlowBody}, δΓ_vec::Ab
     for j in 1:length(b)
         for k in 1:length(b[j].edges)
             i += 1
-            b[j].Γb -= δΓ_vec[i]
+            b[j].Γ -= δΓ_vec[i]
         end
     end
 end
@@ -116,7 +161,7 @@ end
 function bodypointsvelocity!(v::AbstractVector, b::AbstractVector{PotentialFlowBody}, dir::Int)
     for i in 1:length(b)
         vi = view(v,getrange(b,i))
-        vi .= b[i].Ub[dir]
+        vi .= b[i].U[dir]
     end
 end
 
@@ -139,9 +184,9 @@ function Base.show(io::IO, b::PotentialFlowBody)
     sbody = String(take!(iobody))
     println(io,"Potential flow body with $Ne regularized $(Ne == 1 ? "edge" : "edges")")
     println(io,"Shape and position: $(sbody[1:end-1])")
-    println(io,"Linear velocity: $(b.Ub)")
-    println(io,"Angular velocity: $(b.Ωb)")
-    println(io,"Current circulation: $(b.Γb)")
+    println(io,"Linear velocity: $(b.U)")
+    println(io,"Angular velocity: $(b.Ω)")
+    println(io,"Current circulation: $(b.Γ)")
     if Ne > 0
         println(io,"Suction parameter limits:")
         for e in 1:Ne
@@ -149,3 +194,5 @@ function Base.show(io::IO, b::PotentialFlowBody)
         end
     end
 end
+
+@recipe f(::Type{PotentialFlowBody}, pfb::PotentialFlowBody) = pfb.points

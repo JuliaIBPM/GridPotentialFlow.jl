@@ -322,7 +322,7 @@ function ldiv!(A::LU, f::ScalarData)
 end
 
 """
-$(TYPEDSIGNATURES)
+$(SIGNATURES)
 
 Computes the vortex strengths for the edges `sheddingedges` and ψ₀ values and stores them in the `δΓ_vec` and `ψ₀` fields of `sol`. If there are edges that are not in `sheddingedges`, their corresponding vortex strengths are set to zero.
 """
