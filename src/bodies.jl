@@ -1,4 +1,5 @@
 import Base: show, length, collect
+import RigidBodyTools: RigidTransform
 
 export PotentialFlowBody, subtractcirculation!, getU, getΩ, getΓ, setU, setΩ, setΓ
 
@@ -175,6 +176,19 @@ function Base.collect(b::AbstractVector{PotentialFlowBody})
     end
 
     return x, y
+end
+
+function (T::RigidBodyTools.RigidTransform)(b::PotentialFlowBody)
+    T(b.points)
+    return b
+end
+
+function RigidBodyTools.dlength(b::PotentialFlowBody)
+    dlength(b.points)
+end
+
+function RigidBodyTools.dlengthmid(b::PotentialFlowBody)
+    dlengthmid(b.points)
 end
 
 function Base.show(io::IO, b::PotentialFlowBody)
