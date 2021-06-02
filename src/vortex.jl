@@ -55,6 +55,6 @@ function setstrengths!(vl::StructArray{Vortex}, Γnew, idx=nothing)
     if isnothing(idx)
         vl.Γ .= Γnew
     else
-        vl.Γ[idx] .= Γnew
+        setindex!(vl.Γ, Γnew, idx)
     end
 end
