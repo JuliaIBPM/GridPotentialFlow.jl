@@ -233,7 +233,7 @@ end
 
 function ldiv!(sol::ConstrainedIBPoissonSolution{TU,TF}, sys::ConstrainedIBPoisson{Nb,TU,TF}, rhs::ConstrainedIBPoissonRHS) where {Nb,TU,TF,TS}
 
-    # fstar = S⁻¹(ψb+EL⁻¹)
+    # fstar = S⁻¹(ψb+EL⁻¹w)
     ldiv!(sol, sys.ibp, rhs, onlyf=true)
 
     # ψ₀ = S₀\(Γb-B₂₂*fstar)
@@ -263,6 +263,7 @@ end
 
 function ldiv!(sol::ConstrainedIBPoissonSolution{TU,TF}, sys::UnsteadyRegularizedIBPoisson{Nb,Ne,TU,TF}, rhs::UnsteadyRegularizedIBPoissonRHS{TU,TF}) where {Nb,Ne,TU,TF}
 
+    # f̃star = S̃⁻¹(ψb+EL⁻¹w)
     ldiv!(sol, sys.ibp, rhs, onlyf=true)
 
     for k in 1:Ne
@@ -338,7 +339,7 @@ function _computeδΓandψ₀!(sol::ConstrainedIBPoissonSolution{TU,TF}, sys::Un
             end
             sys._r₂_buf[i] = sys.activef̃lim_vec[i] - dot(sys.e_vec[i], sol.f)
         else
-            sys.Sout[end-Ne+i] = 1.0
+            sys.Sout[i,end-Ne+i] = 1.0
             sys._r₂_buf[i] = 0.0
         end
     end
