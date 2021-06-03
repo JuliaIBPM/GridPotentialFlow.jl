@@ -14,6 +14,7 @@ export VortexModel, streamfunction, streamfunction!, vorticity, vorticity!, vort
 # TODO: case where steady regularized bodies are next to unregularized bodies with circulation.
 # TODO: change vortexvelocities to accept w and don't set vortices to 0 anymore.
 # TODO: add parameter to VortexModel constructor to make model unsteady even if no vortices are provided.
+# TODO: remove w from solve! arguments and calculate it in the function body. Then also remove it from solve
 
 """
 $(TYPEDEF)
@@ -233,19 +234,12 @@ Returns the flow velocity as `VectorData` at the locations of the vortices store
 """
 function vortexvelocities!(vm::VortexModel{Nb,Ne}) where {Nb,Ne}
 
-    # The strengths of the Ne last vortices will be calculated in solve and should be set to zero before computing the vorticity field such that they are not included in w
-    for k in 1:Ne
-        vm.vortices.Γ[end-Ne+k] = 0.0
-    end
-
-    vorticity!(vm._w, vm)
-
     if Nb == 0
         sol = PoissonSolution(vm._ψ)
-        solve!(sol, vm, vm._w)
+        solve!(sol, vm)
     else
         sol = ConstrainedIBPoissonSolution(vm._ψ, vm._f, zeros(Float64,Nb), zeros(Float64,Ne))
-        solve!(sol, vm, vm._w)
+        solve!(sol, vm)
     end
 
     Ẋ_vortices = VectorData(length(vm.vortices))
@@ -264,18 +258,24 @@ end
 """
 $(SIGNATURES)
 
-Computes the vorticity field `w` associated with the vortices stored in the vortex model `vm` on the physical grid.
+Computes the vorticity field `w` associated with the vortices stored in the vortex model `vm` on the physical grid. If the extra boolean keyword `onlybulk` is set to `true`, the function ignores the vorticity from the last `Ne` vortices in `vm`.
 """
-function vorticity!(wphysical::TU, vm::VortexModel) where {TU}
+function vorticity!(wphysical::TU, vm::VortexModel{Nb,Ne,TS,TU,TE,TF}; onlybulk::Bool=false) where {Nb,Ne,TS,TU,TE,TF}
 
-    H = Regularize(getpositions(vm.vortices), cellsize(vm.g), I0=origin(vm.g), ddftype=CartesianGrids.M4prime, issymmetric=true)
+    if onlybulk
+        vortices = view(vm.vortices,1:length(vm.vortices)-Ne)
+    else
+        vortices = vm.vortices
+    end
 
-    if isempty(vm.vortices)
+    H = Regularize(getpositions(vortices), cellsize(vm.g), I0=origin(vm.g), ddftype=CartesianGrids.M4prime, issymmetric=true)
+
+    if isempty(vortices)
         wphysical .= 0.0
         return wphysical
     end
 
-    Γ = getstrengths(vm.vortices)
+    Γ = getstrengths(vortices)
     H(wphysical,Γ)
     wphysical ./= cellsize(vm.g)^2 # Divide by the Δx² to ensure that ∫wdA = ΣΓ
 
@@ -298,11 +298,11 @@ end
 """
 $(SIGNATURES)
 
-Computes the potential flow solution `sol` for the bodies and uniform flow in the vortex model `vm` and vorticity on the physical grid `wphysical`. If the vortex model contains bodies with regularized edges and a number of vortices which is greater than or equal to the number of regularized edges, the returned solution contains the computed strengths of the last N vortices in `vm`, with N the number of regularized edges.
+Solves the saddle point system associated with the vortex model `vm` and stores the solution in `sol`. If the vortex model contains bodies with regularized edges and a number of vortices which is greater than or equal to the number of regularized edges, the returned solution contains the computed strengths of the last N vortices in `vm`, with N the number of regularized edges.
 """
-function solve!(sol::PoissonSolution, vm::VortexModel{0,0,TS,TU}, wphysical::TU) where {Nb,TU,TS<:Laplacian}
+function solve!(sol::PoissonSolution, vm::VortexModel{0,0,TS,TU}) where {Nb,TU,TS<:Laplacian}
 
-    vm._w .= wphysical
+    vorticity!(vm._w, vm)
     rhs = PoissonRHS(vm._w)
     _scaletoindexspace!(rhs, cellsize(vm.g))
     vm._nodedata .= .-rhs.w
@@ -314,11 +314,11 @@ function solve!(sol::PoissonSolution, vm::VortexModel{0,0,TS,TU}, wphysical::TU)
     return sol
 end
 
-function solve!(sol::ConstrainedIBPoissonSolution, vm::VortexModel{Nb,0,ConstrainedIBPoisson{Nb,TU,TF}}, wphysical::TU) where {Nb,TU,TF}
+function solve!(sol::ConstrainedIBPoissonSolution, vm::VortexModel{Nb,0,ConstrainedIBPoisson{Nb,TU,TF}}) where {Nb,TU,TF}
 
+    vorticity!(vm._w, vm)
     _streamfunctionbcs!(vm._ψb, vm)
-    vm._w .= wphysical
-    Γb = deepcopy(getΓ.(vm.bodies))
+    Γb = deepcopy(getΓ.(vm.bodies)) # deepcopy bc _scaletoindexspace mutates
 
     rhs = ConstrainedIBPoissonRHS(vm._w, vm._ψb, Γb)
     _scaletoindexspace!(rhs, cellsize(vm.g))
@@ -330,17 +330,16 @@ function solve!(sol::ConstrainedIBPoissonSolution, vm::VortexModel{Nb,0,Constrai
     return sol
 end
 
-function solve!(sol::ConstrainedIBPoissonSolution, vm::VortexModel{Nb,Ne,SteadyRegularizedIBPoisson{Nb,Ne,TU,TF}}, wphysical::TU) where {Nb,Ne,TU,TF}
+function solve!(sol::ConstrainedIBPoissonSolution, vm::VortexModel{Nb,Ne,SteadyRegularizedIBPoisson{Nb,Ne,TU,TF}}) where {Nb,Ne,TU,TF}
 
+    vorticity!(vm._w, vm)
     _streamfunctionbcs!(vm._ψb, vm)
-
-    vm._w .= wphysical
 
     f̃lim_vec = Vector{f̃Limit}()
     for i in 1:Nb
         append!(f̃lim_vec, _computef̃limit.(vm.bodies[i].σ, Ref(vm.bodies[i].points), sum(vm.system.f₀_vec[i])))
     end
-    
+
     rhs = ConstrainedIBPoissonRHS(vm._w, vm._ψb, f̃lim_vec)
     _scaletoindexspace!(rhs, cellsize(vm.g))
     ldiv!(sol, vm.system, rhs)
@@ -351,17 +350,17 @@ function solve!(sol::ConstrainedIBPoissonSolution, vm::VortexModel{Nb,Ne,SteadyR
     return sol
 end
 
-function solve!(sol::ConstrainedIBPoissonSolution, vm::VortexModel{Nb,Ne,UnsteadyRegularizedIBPoisson{Nb,Ne,TU,TF}}, wphysical::TU) where {Nb,Ne,TU,TF}
+function solve!(sol::ConstrainedIBPoissonSolution, vm::VortexModel{Nb,Ne,UnsteadyRegularizedIBPoisson{Nb,Ne,TU,TF}}) where {Nb,Ne,TU,TF}
 
+    vorticity!(vm._w, vm, onlybulk=true)
     _streamfunctionbcs!(vm._ψb, vm)
     _updatesystemd_vec!(vm,collect(length(vm.vortices)-(Ne-1):length(vm.vortices))) # Update the system.d_vec to agree with the latest vortex positions
 
-    vm._w .= wphysical
     f̃lim_vec = Vector{f̃Limits}()
     for i in 1:Nb
         append!(f̃lim_vec, _computef̃limits.(vm.bodies[i].σ, Ref(vm.bodies[i].points), sum(vm.system.f₀_vec[i])))
     end
-    Γw = -getΓ.(vm.bodies) # Γw = ∫wdA
+    Γw = -deepcopy(getΓ.(vm.bodies)) # deepcopy bc _scaletoindexspace mutates
 
     rhs = UnsteadyRegularizedIBPoissonRHS(vm._w, vm._ψb, f̃lim_vec, Γw)
     _scaletoindexspace!(rhs, cellsize(vm.g))
@@ -376,22 +375,20 @@ end
 """
 $(SIGNATURES)
 
-Computes and returns the potential flow solution associated with the current state of the vortex model `vm`. If `vm` contains bodies with regularized edges and a number of vortices which is greater than or equal to the number of regularized edges, the returned solution contains the computed strengths of the last N vortices in `vm`, with N the number of regularized edges.
+Solves the saddle point system associated with the vortex model `vm` and returns the solution. If the vortex model contains bodies with regularized edges and a number of vortices which is greater than or equal to the number of regularized edges, the returned solution contains the computed strengths of the last N vortices in `vm`, with N the number of regularized edges.
 """
 function solve(vm::VortexModel{0,0,TS,TU}) where {Nb,Ne,TS<:Laplacian,TU}
 
-    vorticity!(vm._w, vm)
     sol = PoissonSolution(TU())
-    solve!(sol, vm, vm._w)
+    solve!(sol, vm)
 
     return sol
 end
 
 function solve(vm::VortexModel{Nb,Ne,TS,TU,TE,TF}) where {Nb,Ne,TS<:AbstractPotentialFlowSystem,TU,TE,TF}
 
-    vorticity!(vm._w, vm)
     sol = ConstrainedIBPoissonSolution(TU(), TF(), zeros(Float64,Nb), zeros(Float64,Ne))
-    solve!(sol, vm, vm._w)
+    solve!(sol, vm)
 
     return sol
 end
@@ -403,18 +400,16 @@ Computes the stream function field `ψ` on the physical grid for the potential f
 """
 function streamfunction!(ψ::TU, vm::VortexModel{0,0,TS,TU}) where {Nb,Ne,TS<:Laplacian,TU}
 
-    vorticity!(vm._w, vm)
     sol = PoissonSolution(ψ)
-    solve!(sol, vm, vm._w)
+    solve!(sol, vm)
 
     return sol.ψ
 end
 
 function streamfunction!(ψ::TU, vm::VortexModel{Nb,Ne,TS,TU,TE,TF}) where {Nb,Ne,TS<:AbstractPotentialFlowSystem,TU,TE,TF}
 
-    vorticity!(vm._w, vm)
     sol = ConstrainedIBPoissonSolution(ψ, vm._f, zeros(Float64,Nb), zeros(Float64,Ne))
-    solve!(sol, vm, vm._w)
+    solve!(sol, vm)
 
     return sol.ψ
 end
@@ -483,7 +478,7 @@ Computes the translational coefficients of the added mass matrix of the bodies i
 function addedmass(vm::VortexModel{Nb,Ne}) where {Nb,Ne}
 
     # Deepcopy bodies because we will change the velocities one by one
-    oldbodies = deepcopy(vm.bodies)
+    origbodies = deepcopy(vm.bodies)
 
     # For now only translational
     M = zeros(Nb*2,Nb*2)
@@ -506,7 +501,7 @@ function addedmass(vm::VortexModel{Nb,Ne}) where {Nb,Ne}
             end
         end
     end
-    vm.bodies = oldbodies
+    vm.bodies = origbodies
     return M
 end
 
