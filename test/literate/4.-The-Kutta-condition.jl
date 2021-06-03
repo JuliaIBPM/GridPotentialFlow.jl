@@ -17,21 +17,20 @@ xlim = (-Lx/2,Lx/2)
 ylim = (-Lx/2,Lx/2)
 g = PhysicalGrid(xlim,ylim,Δx);
 
-# To create a potential flow model with flat plate, we use the `Plate` constructor from `RigidBodyTools.jl` and transform it such that its angle of attack is `α`.
+# To create a potential flow model with flat plate, we use the `Plate` constructor from `RigidBodyTools.jl` and transform the body such that its angle of attack is `α`.
 c = Lx/2 # chord length
 α = -π/6 # angle of attack
-plate = Plate(c,4*cellsize(g));
+plate = Plate(c,4*cellsize(g))
 Tr = RigidTransform((0.0,0.0),α)
 Tr(plate)
-Δs = dlengthmid(plate);
-model = VortexModel(g,bodies=[plate]);
+pfb = PotentialFlowBody(plate);
+model = VortexModel(g,bodies=[pfb]);
 
-# To simulate the plate in a uniform flow, we use the `U∞` keyword to construct `ModelParameters`
-w = computew(model)
-modelparameters = ModelParameters(U∞=(1.0,0.0))
-sol = solvesystem(model,w,parameters=modelparameters);
+# To simulate the plate in a uniform flow, we have to set the `U∞` field of the vortex model to our desired value.
+setU∞(model,(1.0,0.0))
+sol = solve(model);
 
-# By plotting many streamlines, we see how flow accelerates as it tries to make its way around the sharp edges of the flat plate. In the continuous case, the velocity field would be singular at the edges.
+# By plotting a large number streamlines, we see how the flow accelerates as it tries to make its way around the sharp edges of the flat plate. In the continuous case, the velocity field would be singular at the edges.
 plot(sol.ψ,g,levels=60);
 plot!(plate,linecolor=:black,linewidth=2,xlabel="x",ylabel="y")
 
@@ -50,7 +49,7 @@ where $\circ$ is the Hadamard product. This decomposed form isolates the singula
 # For our flat plate, we create $\mathfrak{f}_0$ in the same way as we did on the previous page.
 ones = ScalarData(length(plate))
 ones .= 1.0
-f₀ = model.system.S.S⁻¹*ones
+f₀ = model.system.ibp.Sfact\ones
 plot(f₀)
 
 # Then we can plot the smooth $\tilde{\mathfrak{f}}$ as follows.
@@ -82,10 +81,10 @@ $\begin{bmatrix}
 
 =#
 
-# In `GridPotentialFlow.jl`, we create a regularized potential flow model by specifying the index of the regularized edges using the `edges` keyword. In this case, we want to regularize the trailing edge, which is the last point of `Plate`, so its index is `length(plate)`.
-model = VortexModel(g,bodies=[plate],edges=[length(plate)])
-w = computew(model)
-sol = solvesystem(model,w,parameters=modelparameters);
+# In `GridPotentialFlow.jl`, we create a regularized potential flow model by specifying the index of the regularized edges using the `edges` keyword when creating a `PotentialFlowBody`. In this case, we want to regularize the trailing edge, which is the last point of `Plate`, so its index is `length(plate)`.
+pfb = PotentialFlowBody(plate,edges=[length(plate)])
+model = VortexModel(g,bodies=[pfb],U∞=(1.0,0.0))
+sol = solve(model);
 
 # When there are no vortices present in the model, the package solves the above saddle point system and the solution is the steady state solution. Inspection of the streamlines shows that flow now indeed leaves the trailing edge smoothly.
 plot(sol.ψ,g);
@@ -129,17 +128,18 @@ $\begin{bmatrix}
 
 =#
 
-# To simulate this case for our flat plate, we need to insert a point vortex in the flow, preferably near the trailing edge. This situation corresponds to the flow right after impulsively starting a uniform flow around a flat plate and the point vortex now represents the starting vortex. We position the vortex behind and orthogonal the plate at a distance that is proportional to the convective length from the trailing edge. This position does not matter much here, but is of importance when we step in time and insert more point vortices every time step. Its strength can be set arbitrarily, because it will be computed as part of the solution.
+# To simulate this case for our flat plate, we need to insert a point vortex in the flow, preferably near the trailing edge. This situation corresponds to the flow right after impulsively starting a uniform flow around a flat plate and the point vortex now represents the starting vortex. We position the vortex behind and orthogonal the plate at a distance that is proportional to the convective length from the trailing edge. This position does not matter much here, but is of importance when we step in time and insert more point vortices every time step. Its strength can be set arbitrarily, because any vortices that are used for regularizing edges will be ignored when calculating $\mathsf{w}$ in the right-hand side for the saddle-point system.
 Δt = 1e-2
-vTE = Vortex(plate.x[end]+3*modelparameters.U∞[1]*Δt*cos(α+π/2),plate.y[end]+3*modelparameters.U∞[1]*Δt*sin(α+π/2),0.0);
+vTE = Vortex(plate.x[end]+3*Δt*cos(α+π/2),plate.y[end]+3*Δt*sin(α+π/2),0.0);
 
-# We include the point vortex when we create our model. Because the package detects that there is a vortex in the model, it solves the unsteady saddle point system and the solution will include the strength of the point vortex. Note that if there are $N$ edges to be regularized, the package automatically overwrites the strengths of the last $N$ vortices in the `vortices` field of the model.
-model = VortexModel(g,vortices=[vTE],bodies=[plate],edges=[length(plate)])
-w = computew(model)
-sol = solvesystem(model,w,parameters=modelparameters);
+# We include the point vortex when we create our model. Because the package detects that there is a vortex in the model, it solves the unsteady saddle point system and the solution will include the strength for the new point vortex.
+pfb = PotentialFlowBody(plate,edges=[length(plate)])
+model = VortexModel(g,bodies=[pfb],vortices=[vTE],U∞=(1.0,0.0))
+sol = solve(model);
 plot(sol.ψ,g);
 plot!(plate,linecolor=:black,linewidth=2)
-scatter!(model.vortices,color=:black,markersize=2,xlabel="x",ylabel="y")
+scatter!(model.vortices.x,model.vortices.y,color=:black,markersize=2,xlabel="x",ylabel="y")
+# Note that the strength of the new point vortex is not automatically set when calling `solve` on the vortex model
 
 # Because of the proximity of the point vortex to the flat plate, $\tilde{\mathfrak{f}}$ exhibits a quick variation in its value at the surface points that lie closest to the point vortex. The value at the trailing edge point itself is still constrained to zero.
 plot(plot(sol.f,xlabel="body point index",ylabel="f",legend=false),plot(sol.f./f₀,xlabel="body point index",ylabel="f̃",legend=false),size=[800,300])
@@ -166,16 +166,16 @@ $\begin{bmatrix}
 # We now simulate this case again for our flat plate problem. This solution corresponds to the flow right after impulsively starting a uniform flow around a flat plate, but unlike the previous case, the flow now also separates at the leading edge.
 
 # We create two vortices, one near the leading edge and one near the trailing edge.
-vLE = Vortex(plate.x[1]+3*modelparameters.U∞[1]*Δt*plate.len*cos(plate.α+π/2),plate.y[1]+3*modelparameters.U∞[1]*Δt*plate.len*sin(plate.α+π/2),0.0);
-vTE = Vortex(plate.x[end]+3*modelparameters.U∞[1]*Δt*cos(α+π/2),plate.y[end]+3*Δt*modelparameters.U∞[1]*sin(α+π/2),0.0);
+vLE = Vortex(plate.x[1]+3*Δt*plate.len*cos(plate.α+π/2),plate.y[1]+3*Δt*plate.len*sin(plate.α+π/2),0.0);
+vTE = Vortex(plate.x[end]+3*Δt*cos(α+π/2),plate.y[end]+3*Δt*sin(α+π/2),0.0);
 
-# The model has now two regularized edges, corresponding to the first body point and the last one. Now the extended unsteady saddle point system is solved and the solution will include the strengths of the two point vortices.
-model = VortexModel(g,vortices=[vLE,vTE],bodies=[plate],edges=[1,length(plate)]);
-w = computew(model)
-sol = solvesystem(model,w,parameters=modelparameters);
+# The model now has two regularized edges, corresponding to the first body point and the last one.
+pfb = PotentialFlowBody(plate,edges=[1,length(plate)])
+model = VortexModel(g,bodies=[pfb],vortices=[vLE,vTE],U∞=(1.0,0.0))
+sol = solve(model);
 plot(sol.ψ,g);
 plot!(plate,linecolor=:black,linewidth=2)
-scatter!(model.vortices,color=:black,markersize=2,xlabel="x",ylabel="y")
+scatter!(model.vortices.x,model.vortices.y,markersize=2,xlabel="x",ylabel="y")
 
 #
 

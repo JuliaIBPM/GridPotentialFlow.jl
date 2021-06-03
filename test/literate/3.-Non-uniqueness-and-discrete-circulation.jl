@@ -14,7 +14,7 @@ $\begin{bmatrix}
 \end{bmatrix} \begin{pmatrix} \mathsf{s} \\ \mathfrak{f} \\ s_0 \end{pmatrix} =
 \begin{pmatrix} -\mathsf{w} \\ \mathfrak{s}'_b \\ \Gamma_b \end{pmatrix}.$
 
-and the circulation can be specified in `ModelParameters`. If it is not specified, it is set equal to the opposite of the circulation in the flow in the case of a single body, or zero for each body in the case of multiple bodies. The return value of `solvesystem` has a field `ψ₀`, which represents the value for $s_0$, in this case the Lagrange multiplier to enforce the specified circulation.
+and the circulation can be specified using the `Γ` keyword for each body. If it is not specified, it is set to zero. The return value of `solvesystem` has a field `ψ₀`, whose entries represent the value for $s_0$ for each body, which are in this case the Lagrange multipliers to enforce the specified circulation.
 =#
 
 # We now illustrate how to specify the circulation by simulating the flow around two cylinders that have different circulations.
@@ -31,22 +31,21 @@ xlim = (-Lx/2,Lx/2)
 ylim = (-Lx/2,Lx/2)
 g = PhysicalGrid(xlim,ylim,Δx);
 
-# The two cylinders are positioned using the tools from `RigidBodyTools.jl`.
+# The two cylinders are positioned using the tools from `RigidTransform` from `RigidBodyTools.jl` and the circulation of the first one is set to a non-zero value.
 R = Lx/8;
-leftcircle = Circle(R,Δx)
+b_left = PotentialFlowBody(Circle(R,Δx),Γ=1.0)
 T = RigidTransform((-Lx/4,0.0),0.0)
-T(leftcircle);
-rightcircle = Circle(R,Δx)
+T(b_left);
+b_right = PotentialFlowBody(Circle(R,Δx))
 T = RigidTransform((Lx/4,0.0),0.0)
-T(rightcircle);
+T(b_right);
 
-# The circulations are specified in the `ModelParameters` using the `Γb` keyword.
-model = VortexModel(g,bodies=[leftcircle,rightcircle])
-modelparameters = ModelParameters(Γb=[1.0,0.0])
-s = computeψ(model,parameters=modelparameters)
+# A plot of the streamfunction then clearly shows the non-zero circulation about the left cylinder.
+model = VortexModel(g,bodies=[b_left,b_right])
+s = streamfunction(model)
 plot(s,g)
-plot!(leftcircle,fillcolor=:black,fillrange=0,fillalpha=0.25,linecolor=:black,linewidth=2)
-plot!(rightcircle,fillcolor=:black,fillrange=0,fillalpha=0.25,linecolor=:black,linewidth=2)
+plot!(b_left,fillcolor=:black,fillrange=0,fillalpha=0.25,linecolor=:black,linewidth=2)
+plot!(b_right,fillcolor=:black,fillrange=0,fillalpha=0.25,linecolor=:black,linewidth=2)
 
 #=
 When the previously introduced saddle point system
@@ -78,9 +77,9 @@ g = PhysicalGrid(xlim,ylim,Δx);
 a = Lx/4 # semi-major axis
 AR_list = [1.0,2.0,3.0]
 ellipses = [Ellipse(a,a/AR,Δx) for AR in AR_list]
-bodies = Body[]
-push!(bodies,[SplinedBody(hcat(body.x,body.y),3*cellsize(g)) for body in ellipses]...)
-push!(bodies,Plate(2*a,3*Δx));
+bodies = PotentialFlowBody[]
+push!(bodies,[PotentialFlowBody(SplinedBody(hcat(e.x,e.y),3*cellsize(g))) for e in ellipses]...)
+push!(bodies,PotentialFlowBody(Plate(2*a,3*Δx)));
 colors = [:blue,:red,:green,:black]
 plot()
 for i in 1:length(bodies)
@@ -95,7 +94,7 @@ for i in 1:length(bodies)
     model = VortexModel(g,bodies=[bodies[i]]);
     ones = ScalarData(length(bodies[i]))
     ones .= 1.0
-    f₀ = model.system.S.S⁻¹*ones
+    f₀ = model.system.ibp.Sfact\ones
     push!(f₀_list,f₀)
 end
 

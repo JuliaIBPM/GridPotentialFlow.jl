@@ -4,11 +4,7 @@ using GridPotentialFlow
 ENV["GKSwstype"] = "nul"
 
 makedocs(
-    sitename = "GridPotentialFlow",
-    format = Documenter.HTML(),
-    modules = [GridPotentialFlow]
-)
-makedocs(
+    modules = [GridPotentialFlow],
     sitename = "GridPotentialFlow.jl",
     doctest = true,
     clean = true,

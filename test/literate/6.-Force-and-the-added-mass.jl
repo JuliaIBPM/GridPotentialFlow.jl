@@ -41,6 +41,8 @@ g = PhysicalGrid(xlim, ylim, 0.04)
 #
 Rc = 1
 circle = Circle(Rc,2*cellsize(g))
+pfb = PotentialFlowBody(circle)
+
 Δs = dlength(circle);
 
 # The initial spacing between the vortices is `y∞`. After the vortices pass the cylinder, they should return to this spacing.
@@ -48,10 +50,9 @@ y∞ = Rc/2
 v1 = Vortex(-Lx/2+10*cellsize(g),y∞,1.0);
 v2 = Vortex(-Lx/2+10*cellsize(g),-y∞,-1.0);
 
-# We create the vortex model with these two point vortices and the circle and advance the position of the point vortices over some time. During the time stepping, we compute the impulse with `computeimpulse` and store its history.
-model = VortexModel(g,bodies=[circle],vortices=[v1,v2])
-w = computew(model)
-sol = solvesystem(model,w);
+# We create the vortex model with these two point vortices and the circle and advance the position of the point vortices over some time. During the time stepping, we compute the impulse with `impulse` and store its history.
+model = VortexModel(g,bodies=[pfb],vortices=[v1,v2])
+sol = solve(model);
 
 #md # ```@setup 6.-Force-and-the-added-mass
 #md # # Analytical trajectory
@@ -96,21 +97,21 @@ Px_numerical_hist = []
 Py_numerical_hist = []
 
 for t in T
-    Ẋ = computevortexvelocities(model)
+    Ẋ = vortexvelocities!(model)
     X = getvortexpositions(model)
     X = X + Ẋ*Δt
     setvortexpositions!(model,X)
 
     push!(X_hist,X)
 
-    Px, Py = computeimpulse(model)
+    Px, Py = impulse(model)
     push!(Px_numerical_hist,Px)
     push!(Py_numerical_hist,Py)
 end
 
 # When we compare the trajectories and impulse history, the numerical and anaylytical solution should match closely, which is indeed the case.
 plot(circle,fillcolor=:black,fillrange=0,fillalpha=0.25,linecolor=:black,linewidth=2,xlabel="x",ylabel="y")
-scatter!(model.vortices,color=:red)
+scatter!(model.vortices.x,model.vortices.y,color=:red)
 plot!(x_trajectory,y_trajectory_upper,linecolor=:red,label="exact")
 plot!(x_trajectory,y_trajectory_lower,linecolor=:red,label="")
 plot!((X->X[1]).(X_hist),(X->X[3]).(X_hist),color=:blue,linestyle=:dash,label="simulated")
@@ -156,11 +157,9 @@ T = 0.0:Δt:tf;
 #md # function shed_new_vorticity!(blobs, plate, motion, t, lesp = 0.0, tesp = 0.0)
 #md #     z₊ = (blobs[end-1].z + 2plate.zs[end])/3
 #md #     z₋ = (blobs[end].z + 2plate.zs[1])/3
-#md #
 #md #     blob₊ = PotentialFlow.Vortex.Blob(z₊, 1.0, δ)
 #md #     blob₋ = PotentialFlow.Vortex.Blob(z₋, 1.0, δ)
 #md #     Plates.enforce_no_flow_through!(plate, motion, blobs, t)
-#md #
 #md #     Γ₊, Γ₋, _, _ = Plates.vorticity_flux!(plate, blob₊, blob₋, t, lesp, tesp);
 #md #     push!(blobs, PotentialFlow.Vortex.Blob(z₊, Γ₊, blobs[1].δ), PotentialFlow.Vortex.Blob(z₋, Γ₋, blobs[1].δ))
 #md # end
@@ -217,11 +216,9 @@ T = 0.0:Δt:tf;
 #!md function shed_new_vorticity!(blobs, plate, motion, t, lesp = 0.0, tesp = 0.0)
 #!md     z₊ = (blobs[end-1].z + 2plate.zs[end])/3
 #!md     z₋ = (blobs[end].z + 2plate.zs[1])/3
-#!md
 #!md     blob₊ = PotentialFlow.Vortex.Blob(z₊, 1.0, δ)
 #!md     blob₋ = PotentialFlow.Vortex.Blob(z₋, 1.0, δ)
 #!md     Plates.enforce_no_flow_through!(plate, motion, blobs, t)
-#!md
 #!md     Γ₊, Γ₋, _, _ = Plates.vorticity_flux!(plate, blob₊, blob₋, t, lesp, tesp);
 #!md     push!(blobs, PotentialFlow.Vortex.Blob(z₊, Γ₊, blobs[1].δ), PotentialFlow.Vortex.Blob(z₋, Γ₋, blobs[1].δ))
 #!md end
@@ -251,8 +248,8 @@ T = 0.0:Δt:tf;
 #!md     global sys
 #!md     global sys₊
 #!md     push!(t_hist,t)
-#!md     plate, ambient_ω = sys
-#!md     motion, ambient_u = ẋs
+#!md     local plate, ambient_ω = sys
+#!md     local motion, ambient_u = ẋs
 #!md     resize!(sys₊[2], length(sys[2]))
 #!md     forward_euler!(sys₊, sys, t, Δt, compute_ẋ!, advect!, ẋs)
 #!md     sys, sys₊ = sys₊, sys
@@ -270,6 +267,7 @@ g = PhysicalGrid(xlim,ylim,Δx);
 
 dsdx = 2
 plate = RigidBodyTools.Plate(c,dsdx*Δx)
+pfb = PotentialFlowBody(plate,edges=[1,length(plate)],σ=[SuctionParameter(σLE),SuctionParameter(σTE)])
 transform = RigidTransform((0.0,0.0),-π/3)
 transform(plate);
 Δs = dlength(plate)
@@ -290,32 +288,31 @@ function createsheddedvortices(plate,oldvortices)
     return vLE,vTE
 end
 
-# The model parameters should specify the uniform velocity as the negative translational velocity of the plate.
+# The model free stream should be the negative of the translational velocity of the plate.
 
-model = VortexModel(g,bodies=[plate],edges=[1,length(plate)],vortices=[firstvLE,firstvTE]);
-modelparameters = ModelParameters(U∞=(-ċ,0.0),σ=[SuctionParameter(σLE),SuctionParameter(σTE)]);
+model = VortexModel(g,bodies=[pfb],vortices=[firstvLE,firstvTE],U∞=(-ċ,0.0));
 
-# The first impulse we record is with the first two vortices. Note that the `computeimpulse` function internally calls the `solvesystem` method so it sets the strengths of the new vortices and such that they are correctly accounted for in the impulse calculation.
+# The first impulse we record is with the first two vortices. Note that the `impulse` function internally calls the `solvesystem` method so it sets the strengths of the new vortices and such that they are correctly accounted for in the impulse calculation.
 
 Px_hist = Float64[];
 Py_hist = Float64[];
-Px, Py = computeimpulse(model,parameters=modelparameters);
-push!(Px_hist,Px);
-push!(Py_hist,Py);
+Pxinit, Pyinit = impulse(model);
+push!(Px_hist,Pxinit);
+push!(Py_hist,Pyinit);
 
 
 # Then we enter a time loop and record the impulse every time we create new vortices.
 
 for tloc in T[2:end]
-    Ẋ = computevortexvelocities(model,parameters=modelparameters)
+    Ẋ = vortexvelocities!(model)
     X = getvortexpositions(model)
     X = X + Ẋ*Δt
     setvortexpositions!(model,X)
 
-    vLE, vTE = createsheddedvortices(plate,model.vortices.list)
+    vLE, vTE = createsheddedvortices(plate,model.vortices)
     pushvortices!(model,vLE,vTE)
 
-    Px, Py = computeimpulse(model,parameters=modelparameters)
+    Px, Py = impulse(model)
     push!(Px_hist,Px)
     push!(Py_hist,Py)
 end
@@ -329,7 +326,7 @@ Fy_hist = -diff(Py_hist)/Δt;
 
 plot(plate,fillcolor=:black,fillrange=0,fillalpha=0.25,linecolor=:black,linewidth=2,xlim=xlim,ylim=ylim,xlabel="x",ylabel="y")
 scatter!(real.((v->v.z).(sys[2])).-tf*ċ,imag.((v->v.z).(sys[2])),color=:red,markersize=4,label="PotentialFlow.jl")
-scatter!(model.vortices,color=:blue,markersize=2,label="GridPotentialFlow.jl")
+scatter!(model.vortices.x,model.vortices.y,color=:blue,markersize=2,label="GridPotentialFlow.jl")
 
 # The vertical impulse and the vertical force (lift) can also be compared and show good agreement as well.
 plot(xlabel="t",ylabel="Py")
@@ -348,7 +345,7 @@ plot!(T[2:end],imag.(force),color=:red,label="GridPotentialFlow.jl")
 # The added mass tensor provides a measure of the inertial influence of the fluid on the body in response to changes in the body's translational or rotational motion. The coefficients of the added mass tensor of a body are obtained by computing the impulse components associated with a unit-valued component of motion. The motion's influence is both direct, via the surface velocity, and indirect, in the bound vortex sheet that develops on the surface.
 
 #=
-The added mass for simple geometries can easiliy be calculated in an analytical way. For example, the entries of the translational added mass tensor for an ellipse with semi-major axis $a$ and semi-minor axis $b$ are $m_{xx} = \rho \pi b^2$ for motion in the $x$ direction, $m_{yy} = \rho \pi a^2$ for motion in the $y$-direction, with the diagonal entries $m_{xy}=m_{yx}=0$. By using `computeaddedmassmatrix` from this package we can approximate these results numerically. In this case, we have one body and the method will return a matrix with the entries
+The added mass for simple geometries can easiliy be calculated in an analytical way. For example, the entries of the translational added mass tensor for an ellipse with semi-major axis $a$ and semi-minor axis $b$ are $m_{xx} = \rho \pi b^2$ for motion in the $x$ direction, $m_{yy} = \rho \pi a^2$ for motion in the $y$-direction, with the diagonal entries $m_{xy}=m_{yx}=0$. By using `addedmass` from this package we can approximate these results numerically. In this case, we have one body and the method will return a matrix with the entries
 
 $\begin{bmatrix}
 m_{xx} & m_{xy} \\
@@ -374,8 +371,9 @@ m_{yx} & m_{yy}
 a = 0.5
 b = 0.25
 ellipse = Ellipse(a,b,Δx)
-model = VortexModel(g,bodies=[ellipse])
-M = computeaddedmassmatrix(model)
+pfb = PotentialFlowBody(ellipse)
+model = VortexModel(g,bodies=[pfb])
+M = GridPotentialFlow.addedmass(model)
 
 # We can compare the values using the `@test` macro.
 using Test
@@ -383,7 +381,7 @@ using Test
 #
 @test isapprox(M[2,2], π*a^2, atol=1e-1)
 
-# In the case of $N$ bodies, `computeaddedmassmatrix` returns the translational added mass tensor of size $2N$-by-$2N$. As an example, we will compute the added mass tensor for an array of cylinders. To compare it with an analytically obtained solution, we will calculate the added mass matrix tensor for the following gap-to-radius ratios.
+# In the case of $N$ bodies, `addedmass` returns the translational added mass tensor of size $2N$-by-$2N$. As an example, we will compute the added mass tensor for an array of cylinders. To compare it with an analytically obtained solution, we will calculate the added mass matrix tensor for the following gap-to-radius ratios.
 
 GRratios = [0.1,0.2,0.3,0.4,0.5,0.6,0.8,1.0,1.2,1.4,1.6];
 
@@ -441,12 +439,12 @@ for idx in 1:length(GRratios)
     spacing = 2*R+gap
     bodycenters = rectangulararray(rows,columns,spacing)
     for i in 1:N
-        T = RigidTransform((bodycenters.u[i],bodycenters.v[i]),0.0)
-        global bodies[i] = T(deepcopy(bodies[i]))
+        Tf = RigidTransform((bodycenters.u[i],bodycenters.v[i]),0.0)
+        global bodies[i] = Tf(deepcopy(bodies[i]))
     end
-    bodylist = BodyList(bodies)
-    model = VortexModel(g,bodies=bodylist);
-    M = computeaddedmassmatrix(model)/𝒱
+    body_list = PotentialFlowBody.(bodies)
+    vm = VortexModel(g,bodies=body_list);
+    M = GridPotentialFlow.addedmass(vm)/𝒱
     eigM = eigen(M);
     max_eig_value_coef = maximum(real(eigM.values))
     max_self_added_mass_coef = maximum(M)
