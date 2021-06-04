@@ -1,4 +1,4 @@
-export Vortex, updateposition!
+export Vortex
 
 """
 $(TYPEDEF)
@@ -21,21 +21,40 @@ end
 """
 $(TYPEDSIGNATURES)
 
-Updates the `x` and `y` fields of `vortex`, given the x-velocity `u`, y-velocity `v`, and timestep `Δt`.
+Returns the strengths of all point vortices in the `StructArray` `vl` as `ScalarData`.
 """
-function updateposition!(vortex::Vortex,u::Real,v::Real,Δt::Real)
-    vortex.x += Δt*u
-    vortex.y += Δt*v
-    return vortex
+function getstrengths(vl::StructArray{Vortex})
+    return ScalarData(vl.Γ)
 end
 
 """
 $(TYPEDSIGNATURES)
 
-Sets the `x` and `y` fields of `vortex` to the `xnew` and `ynew`, respectively.
+Returns the positions of all point vortices in the `StructArray` `vl` as `VectorData`.
 """
-function setposition!(vortex::Vortex,xnew::Real,ynew::Real)
-    vortex.x = xnew
-    vortex.y = ynew
-    return vortex
+function getpositions(vl::StructArray{Vortex})
+    return VectorData(vl.x,vl.y)
+end
+
+"""
+$(TYPEDSIGNATURES)
+
+Sets the `x` and `y` fields of the point vortices in the `StructArray` `vl` to the entries of `xnew` and `ynew`, respectively.
+"""
+function setpositions!(vl::StructArray{Vortex}, xnew, ynew)
+    vl.x .= xnew
+    vl.y .= ynew
+end
+
+"""
+$(TYPEDSIGNATURES)
+
+Sets the `Γ` field of the point vortices in the `StructArray` `vl` to the entries of `Γnew`.
+"""
+function setstrengths!(vl::StructArray{Vortex}, Γnew, idx=nothing)
+    if isnothing(idx)
+        vl.Γ .= Γnew
+    else
+        setindex!(vl.Γ, Γnew, idx)
+    end
 end

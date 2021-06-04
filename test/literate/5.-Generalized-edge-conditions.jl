@@ -34,16 +34,14 @@ Tr = RigidTransform((0.0,0.0),α)
 Tr(plate)
 Δs = dlengthmid(plate);
 
-# We create three instances of `ModelParameters`, each one with a different suction parameter range. We only vary the suction parameter at the leading edge and keep it at zero (Kutta condition) at the trailing edge.
+# We create three instances of `PotentialFlowBody`, each one with a different suction parameter range. We only vary the suction parameter at the leading edge and keep it at zero (Kutta condition) at the trailing edge.
 σLE_list = [0.0,0.05,0.1];
-modelparameters1 = ModelParameters(U∞=(1.0,0.0),σ=[SuctionParameter(σLE_list[1]),SuctionParameter(0.0)])
-modelparameters2 = ModelParameters(U∞=(1.0,0.0),σ=[SuctionParameter(σLE_list[2]),SuctionParameter(0.0)])
-modelparameters3 = ModelParameters(U∞=(1.0,0.0),σ=[SuctionParameter(σLE_list[3]),SuctionParameter(0.0)]);
+pfb_list = [PotentialFlowBody(plate,edges=[1,length(plate)],σ=[SuctionParameter(σLE),SuctionParameter(0.0)]) for σLE in σLE_list];
 
-# The initial point vortices are the same.
+# The initial point vortices are the same in each case.
 Δt = 2e-2
-vLE = Vortex(plate.x[1]+3*modelparameters1.U∞[1]*Δt*plate.len*cos(plate.α+π/2),plate.y[1]+3*modelparameters1.U∞[1]*Δt*plate.len*sin(plate.α+π/2),0.0);
-vTE = Vortex(plate.x[end]+3*modelparameters1.U∞[1]*Δt*cos(α+π/2),plate.y[end]+3*Δt*modelparameters1.U∞[1]*sin(α+π/2),0.0);
+vLE = Vortex(plate.x[1]+3Δt*plate.len*cos(plate.α+π/2),plate.y[1]+3Δt*plate.len*sin(plate.α+π/2),0.0);
+vTE = Vortex(plate.x[end]+3Δt*cos(α+π/2),plate.y[end]+3Δt*sin(α+π/2),0.0);
 
 # At each time step, we will need to insert new point vortices near the regularized edges to simulate the vortex shedding. A good strategy is to place them one-third of the way from the edge to the last released vortex from that edge. This will happen at each time step, so we create a function for it.
 function createsheddedvortices(plate,oldvortices)
@@ -54,43 +52,36 @@ function createsheddedvortices(plate,oldvortices)
     return vLE, vTE
 end
 
-# We create a vortex model with the initial point vortices for each of the suction parameter ranges.
-model1 = VortexModel(g,bodies=[plate],edges=[1,length(plate)],vortices=[vLE,vTE]);
-model2 = VortexModel(g,bodies=[plate],edges=[1,length(plate)],vortices=[vLE,vTE]);
-model3 = VortexModel(g,bodies=[plate],edges=[1,length(plate)],vortices=[vLE,vTE]);
-
-models = [model1,model2,model3]
-modelparameters = [modelparameters1,modelparameters2,modelparameters3]
+# We create a vortex models with the initial point vortices.
+model_list = [VortexModel(g,bodies=[pfb],vortices=[vLE,vTE],U∞=(1.0,0.0)) for pfb in pfb_list];
 
 # Now we can advance the solution in time.
 T = 0:Δt:0.2
 for t in T
-    for i in 1:length(σLE_list)
-        Ẋ = computevortexvelocities(models[i],parameters=modelparameters[i])
-        X = getvortexpositions(models[i])
-        X = X + Ẋ*Δt
-        setvortexpositions!(models[i],X)
-
-        vLE, vTE = createsheddedvortices(plate,models[i].vortices.list)
-        pushvortices!(models[i],vLE,vTE)
+    for vm in model_list
+        X = getvortexpositions(vm)
+        Ẋ = vortexvelocities!(vm)
+        X .= X .+ Ẋ*Δt
+        setvortexpositions!(vm, X)
+        vLEnew, vTEnew = createsheddedvortices(plate,vm.vortices[end-1:end])
+        pushvortices!(vm,vLEnew,vTEnew)
     end
 end
 
 # By plotting the positions of the point vortices emanating from the leading edge, we see that as $\sigma_{k}^{\mathrm{max}}$ increases, the stream of point vortices is swept back from the edge.
 colors = [:red,:blue,:green];
 plot(plate,fillcolor=:black,fillrange=0,fillalpha=0.25,linecolor=:black,linewidth=2,xlabel="x",ylabel="y")
-for i in 1:length(models)
-    plot!(models[i].vortices.list[4:2:end],color=colors[i],marker=:circle,markersize=2)
-    plot!(models[i].vortices.list[3:2:end],color=colors[i],marker=:circle,markersize=2)
-    scatter!(models[i].vortices.list[1:2],color=colors[i],marker=:circle,markersize=2,label="σLE=$(σLE_list[i])")
+for i in 1:length(model_list)
+    plot!(model_list[i].vortices.x[4:2:end],model_list[i].vortices.y[4:2:end],color=colors[i],marker=:circle,markersize=2)
+    plot!(model_list[i].vortices.x[3:2:end],model_list[i].vortices.y[3:2:end],color=colors[i],marker=:circle,markersize=2)
+    scatter!(model_list[i].vortices.x[1:2],model_list[i].vortices.y[1:2],color=colors[i],marker=:circle,markersize=2,label="σLE=$(σLE_list[i])")
 end
 plot!()
 
 #
 plot(xlabel="body point index",ylabel="f̃")
-for i in 1:length(σLE_list)
-    w = computew(models[i])
-    sol = solvesystem(models[i],w,parameters=modelparameters[i]);
-    plot!(sol.f./models[i].system.f₀,linecolor=colors[i],label="σLE=$(σLE_list[i])")
+for i in 1:length(model_list)
+    sol = solve(model_list[i]);
+    plot!(sol.f./model_list[i].system.f₀,linecolor=colors[i],label="σLE=$(σLE_list[i])")
 end
 plot!()
