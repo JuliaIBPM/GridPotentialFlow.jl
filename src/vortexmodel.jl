@@ -196,7 +196,7 @@ function _updatesystemd_vec!(vm::VortexModel{Nb,Ne,UnsteadyRegularizedIBPoisson{
 
     H = Regularize(getpositions(v), cellsize(vm.g), I0=origin(vm.g), ddftype=CartesianGrids.M4prime, issymmetric=true)
 
-    Γ = getstrengths(v)
+    Γ = deepcopy(getstrengths(v))
     for i in 1:Ne
         Γ .= 0
         Γ[i] = 1.0
@@ -452,7 +452,7 @@ end
 """
 $(SIGNATURES)
 
-Computes the impulse associated with the body motions in the vortex model `vm` and the vortex sheet strength in `sol`.
+Computes the impulse associated with the body motions in the vortex model `vm` and the vortex sheet strength in `sol`. Note that newly inserted vortices should have their strengths set prior to calling this function to be included in the impulse calculation.
 """
 function impulse(sol::TS, vm::VortexModel) where {TS<:AbstractIBPoissonSolution}
     # Compute vorticity field again, because now it can contain the vorticity of newly shedded vortices
@@ -463,7 +463,7 @@ end
 """
 $(SIGNATURES)
 
-Computes the impulse associated with the current state vortices and bodies in the vortex model `vm`.
+Computes the impulse associated with the current state vortices and bodies in the vortex model `vm`. Note that newly inserted vortices should have their strengths set prior to calling this function to be included in the impulse calculation.
 """
 function impulse(vm::VortexModel)
     sol = solve(vm)
