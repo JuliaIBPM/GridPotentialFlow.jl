@@ -485,7 +485,7 @@ function addedmass(vm::VortexModel{Nb,Ne}) where {Nb,Ne}
 
     for movingbodyindex in 1:Nb
         for dir in 1:2
-            for i in Nb
+            for i in 1:Nb
                 setU(vm.bodies[i], (0.0,0.0))
             end
             if dir == 1
