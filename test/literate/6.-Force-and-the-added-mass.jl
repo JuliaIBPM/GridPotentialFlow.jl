@@ -241,12 +241,12 @@ T = 0.0:Δt:tf;
 #!md t_hist = Float64[]
 #!md global t = 0
 #!md push!(t_hist,t)
-#!md push!(imp,Elements.impulse(sys));
 #!md # Time stepping
 #!md for tloc in T[2:end]
 #!md     global t += Δt
 #!md     global sys
 #!md     global sys₊
+#!md     push!(imp,Elements.impulse(sys))
 #!md     push!(t_hist,t)
 #!md     local plate, ambient_ω = sys
 #!md     local motion, ambient_u = ẋs
@@ -254,7 +254,6 @@ T = 0.0:Δt:tf;
 #!md     forward_euler!(sys₊, sys, t, Δt, compute_ẋ!, advect!, ẋs)
 #!md     sys, sys₊ = sys₊, sys
 #!md     shed_new_vorticity!(sys[2], sys[1], ẋs[1], t, σLE, σTE)
-#!md     push!(imp,Elements.impulse(sys))
 #!md end
 #!md force = -diff(imp)/Δt;
 
@@ -292,27 +291,21 @@ end
 
 model = VortexModel(g,bodies=[pfb],vortices=[firstvLE,firstvTE],U∞=(-ċ,0.0));
 
-# The first impulse we record is with the first two vortices. Note that the `impulse` function internally calls the `solvesystem` method so it sets the strengths of the new vortices and such that they are correctly accounted for in the impulse calculation.
+# Note that we have to set the strengths of the new vortices ourselves before calling the `impulse` function. In this case, this is done for us in the `vortexvelocities!`.
 
 Px_hist = Float64[];
 Py_hist = Float64[];
-Pxinit, Pyinit = impulse(model);
-push!(Px_hist,Pxinit);
-push!(Py_hist,Pyinit);
-
 
 # Then we enter a time loop and record the impulse every time we create new vortices.
 
 for tloc in T[2:end]
     Ẋ = vortexvelocities!(model)
+    Px, Py = impulse(model)
     X = getvortexpositions(model)
     X = X + Ẋ*Δt
     setvortexpositions!(model,X)
-
     vLE, vTE = createsheddedvortices(plate,model.vortices)
     pushvortices!(model,vLE,vTE)
-
-    Px, Py = impulse(model)
     push!(Px_hist,Px)
     push!(Py_hist,Py)
 end
@@ -330,13 +323,13 @@ scatter!(model.vortices.x,model.vortices.y,color=:blue,markersize=2,label="GridP
 
 # The vertical impulse and the vertical force (lift) can also be compared and show good agreement as well.
 plot(xlabel="t",ylabel="Py")
-plot!(T,Py_hist,color=:blue,label="PotentialFlow.jl")
-plot!(T,imag.(imp),color=:red,label="GridPotentialFlow.jl")
+plot!(T[1:end-1],imag.(imp),color=:blue,label="PotentialFlow.jl")
+plot!(T[1:end-1],Py_hist,color=:red,label="GridPotentialFlow.jl")
 
 #
 plot(xlabel="t",ylabel="Fy")
-plot!(T[2:end],Fy_hist,color=:blue,label="PotentialFlow.jl")
-plot!(T[2:end],imag.(force),color=:red,label="GridPotentialFlow.jl")
+plot!(T[2:end-1],imag.(force),color=:blue,label="PotentialFlow.jl")
+plot!(T[2:end-1],Fy_hist,color=:red,label="GridPotentialFlow.jl")
 
 #=
 ## Added mass
