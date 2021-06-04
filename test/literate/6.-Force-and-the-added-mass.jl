@@ -180,25 +180,21 @@ T = 0.0:Δt:tf;
 #md # ẋs = (motion, allocate_velocity(blobs))
 #md # imp = ComplexF64[];
 #md # t_hist = Float64[]
-#md # t = 0
+#md # global t = 0
 #md # push!(t_hist,t)
-#md # push!(imp,Elements.impulse(sys));
 #md # # Time stepping
 #md # for tloc in T[2:end]
 #md #     global t += Δt
 #md #     global sys
 #md #     global sys₊
+#md #     push!(imp,Elements.impulse(sys))
 #md #     push!(t_hist,t)
-#md #     plate, ambient_ω = sys
-#md #     motion, ambient_u = ẋs
+#md #     local plate, ambient_ω = sys
+#md #     local motion, ambient_u = ẋs
 #md #     resize!(sys₊[2], length(sys[2]))
 #md #     forward_euler!(sys₊, sys, t, Δt, compute_ẋ!, advect!, ẋs)
-#md #     # The force requires information about the motion of the plate,
-#md #     # the strength, location, and velocity of the ambient vortex elements,
-#md #     # as well as the vorticity flux from the plate edges
 #md #     sys, sys₊ = sys₊, sys
 #md #     shed_new_vorticity!(sys[2], sys[1], ẋs[1], t, σLE, σTE)
-#md #     push!(imp,Elements.impulse(sys))
 #md # end
 #md # force = -diff(imp)/Δt;
 #md # ```

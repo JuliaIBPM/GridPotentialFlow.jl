@@ -63,8 +63,8 @@ for t in T
         Ẋ = vortexvelocities!(vm)
         X .= X .+ Ẋ*Δt
         setvortexpositions!(vm, X)
-        local vLE, local vTE = createsheddedvortices(plate,vm.vortices[end-1:end])
-        pushvortices!(vm,vLE,vTE)
+        vLEnew, vTEnew = createsheddedvortices(plate,vm.vortices[end-1:end])
+        pushvortices!(vm,vLEnew,vTEnew)
     end
 end
 
