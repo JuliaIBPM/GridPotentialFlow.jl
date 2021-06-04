@@ -17,6 +17,7 @@ StructArrays = "09ab397b-f2b6-538f-b94a-2f83cf4a842a"
 [compat]
 CartesianGrids = "0.1.12"
 DocStringExtensions = "0.8.4"
+LinearMaps = "3"
 RecipesBase = "1.1"
 Reexport = "0.2.0, 1.0"
 RigidBodyTools = "0.1.9"
