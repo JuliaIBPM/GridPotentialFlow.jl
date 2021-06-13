@@ -157,13 +157,20 @@ model = VortexModel(g,bodies=[pfb],vortices=[firstvLE,firstvTE],U∞=(-ċ,0.0))
 
 Px_hist = Float64[];
 Py_hist = Float64[];
-
+sol = solve(model);
 for tloc in T[2:end]
-    Ẋ = vortexvelocities!(model)
+    X = getvortexpositions(model) # gets bigger every time step because we add vortices
+    Ẋ = deepcopy(X)
+
+    solve!(sol, model)
+    setvortexstrengths!(model, sol.δΓ_vec, length(X.u)-1:length(X.u))
+    subtractcirculation!(model.bodies, sol.δΓ_vec)
     Px, Py = impulse(model)
-    X = getvortexpositions(model)
-    X = X + Ẋ*Δt
-    setvortexpositions!(model,X)
+
+    vortexvelocities!(Ẋ, model, sol.ψ)
+    X .= X .+ Ẋ*Δt
+    setvortexpositions!(model, X)
+
     vLE, vTE = createsheddedvortices(plate,model.vortices)
     pushvortices!(model,vLE,vTE)
     push!(Px_hist,Px)

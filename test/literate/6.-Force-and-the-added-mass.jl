@@ -287,31 +287,38 @@ end
 
 model = VortexModel(g,bodies=[pfb],vortices=[firstvLE,firstvTE],U∞=(-ċ,0.0));
 
-# Note that we have to set the strengths of the new vortices ourselves before calling the `impulse` function. In this case, this is done for us in the `vortexvelocities!`.
+#=
+Then we enter a time stepping loop and record the impulse every time we create new vortices. Note that because we release new vortices at every time step, it is not straightforward to use a multi-step time integration method like RK4 to advance the positions of the point vortices. Instead, we use forward Euler and the size of the positions vector increases every time step by the number of new vortices we insert. To advance the system one time step, we first need to solve the saddle-point system, set the strengths of the new vortices, subtract that circulation from the bodies, and calculate the vortex velocities with the saddle-point system solution. For convenience, these four operations are carried out internally if we would call `vortexvelocities!(model)`. However, if we want to have access to the solution of the saddle-point system, we can explicitly perform each operation as is done in the following time stepping loop. Note that we have to set the strengths of the new vortices before calling the `impulse` function, otherwise the new vortices won't be included in the calculation.
+=#
 
 Px_hist = Float64[];
 Py_hist = Float64[];
-
-# Then we enter a time loop and record the impulse every time we create new vortices.
-
+sol = solve(model);
 for tloc in T[2:end]
-    Ẋ = vortexvelocities!(model)
+    X = getvortexpositions(model) # gets bigger every time step because we add vortices
+    Ẋ = deepcopy(X)
+
+    solve!(sol, model)
+    setvortexstrengths!(model, sol.δΓ_vec, length(X.u)-1:length(X.u))
+    subtractcirculation!(model.bodies, sol.δΓ_vec)
     Px, Py = impulse(model)
-    X = getvortexpositions(model)
-    X = X + Ẋ*Δt
-    setvortexpositions!(model,X)
+
+    vortexvelocities!(Ẋ, model, sol.ψ)
+    X .= X .+ Ẋ*Δt
+    setvortexpositions!(model, X)
+
     vLE, vTE = createsheddedvortices(plate,model.vortices)
     pushvortices!(model,vLE,vTE)
     push!(Px_hist,Px)
     push!(Py_hist,Py)
 end
 
-# The force history can be obtained by finite differencing the impulse history.
+# The force history can be obtained by taking finite differences of the impulse history.
 
 Fx_hist = -diff(Px_hist)/Δt;
 Fy_hist = -diff(Py_hist)/Δt;
 
-# We can now compare the positions of the point vortices by shifting the `PotentialFlow.jl` solution by `-tf*ċ` such that the origin of the frame of reference coincides with the center plate. Superimposingt the `GridPotentialFlow.jl` solution then shows that the positions of the point vortices agree very well.
+# We can now compare the positions of the point vortices by shifting the `PotentialFlow.jl` solution by `-tf*ċ` such that the origin of the frame of reference coincides with the center plate. Superimposing the `GridPotentialFlow.jl` solution then shows that the positions of the point vortices agree very well.
 
 plot(plate,fillcolor=:black,fillrange=0,fillalpha=0.25,linecolor=:black,linewidth=2,xlim=xlim,ylim=ylim,xlabel="x",ylabel="y")
 scatter!(real.((v->v.z).(sys[2])).-tf*ċ,imag.((v->v.z).(sys[2])),color=:red,markersize=4,label="PotentialFlow.jl")
