@@ -53,6 +53,14 @@ function _computef̃limit(SP::SuctionParameter, plate::Plate, Γ₀)
     return f̃
 end
 
+function _computef̃limit(SP::SuctionParameter, body::Body, Γ₀)
+    if iszero(SP)
+        return 0.0
+    else
+        throw(ArgumentError("No conversion from suction parameter to limit on f̃ for $(typeof(body)) implemented"))
+    end
+end
+
 function _computef̃limit(SP::SuctionParameterRange, args...)
     if SP.σmax == SP.σmin
         _computef̃limit(SP.σmax, args...)
@@ -61,11 +69,11 @@ function _computef̃limit(SP::SuctionParameterRange, args...)
     end
 end
 
-function _computef̃limits(SP::SuctionParameter, args...)
-    return _computef̃limits(SuctionParameterRange(-SP,SP), args...)
+function _computef̃range(SP::SuctionParameter, args...)
+    return _computef̃range(SuctionParameterRange(-SP,SP), args...)
 end
 
-function _computef̃limits(SP::SuctionParameterRange, args...)
+function _computef̃range(SP::SuctionParameterRange, args...)
     f̃min = _computef̃limit(SP.σmax, args...)
     f̃max = _computef̃limit(SP.σmin, args...)
     return f̃Limits(f̃min,f̃max)

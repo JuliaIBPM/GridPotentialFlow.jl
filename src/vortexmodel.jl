@@ -318,7 +318,7 @@ function solve!(sol::ConstrainedIBPoissonSolution, vm::VortexModel{Nb,0,Constrai
 
     vorticity!(vm._w, vm)
     _streamfunctionbcs!(vm._ψb, vm)
-    Γb = deepcopy(getΓ.(vm.bodies)) # deepcopy bc _scaletoindexspace mutates
+    Γb = deepcopy(getΓ.(vm.bodies)) # deepcopy because _scaletoindexspace mutates
 
     rhs = ConstrainedIBPoissonRHS(vm._w, vm._ψb, Γb)
     _scaletoindexspace!(rhs, cellsize(vm.g))
@@ -358,9 +358,9 @@ function solve!(sol::ConstrainedIBPoissonSolution, vm::VortexModel{Nb,Ne,Unstead
 
     f̃lim_vec = Vector{f̃Limits}()
     for i in 1:Nb
-        append!(f̃lim_vec, _computef̃limits.(vm.bodies[i].σ, Ref(vm.bodies[i].points), sum(vm.system.f₀_vec[i])))
+        append!(f̃lim_vec, _computef̃range.(vm.bodies[i].σ, Ref(vm.bodies[i].points), sum(vm.system.f₀_vec[i])))
     end
-    Γw = -deepcopy(getΓ.(vm.bodies)) # deepcopy bc _scaletoindexspace mutates
+    Γw = -deepcopy(getΓ.(vm.bodies)) # deepcopy because _scaletoindexspace mutates
 
     rhs = UnsteadyRegularizedIBPoissonRHS(vm._w, vm._ψb, f̃lim_vec, Γw)
     _scaletoindexspace!(rhs, cellsize(vm.g))
