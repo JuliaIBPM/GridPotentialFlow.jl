@@ -50,10 +50,6 @@ y∞ = Rc/2
 v1 = Vortex(-Lx/2+10*cellsize(g),y∞,1.0);
 v2 = Vortex(-Lx/2+10*cellsize(g),-y∞,-1.0);
 
-# We create the vortex model with these two point vortices and the circle and advance the position of the point vortices over some time. During the time stepping, we compute the impulse with `impulse` and store its history.
-model = VortexModel(g,bodies=[pfb],vortices=[v1,v2])
-sol = solve(model);
-
 #md # ```@setup 6.-Force-and-the-added-mass
 #md # # Analytical trajectory
 #md # x(r) = sqrt(r^2-(y∞^2*(r^2-1)^2)/((r^2-1)^2-4*y∞^2))
@@ -90,36 +86,42 @@ sol = solve(model);
 #!md Px_exact = Px_func.(x_trajectory,y_trajectory_upper);
 #!md Py_exact = Py_func.(x_trajectory,y_trajectory_upper);
 
-Δt = 0.1
-T = 0:Δt:64.0
-X_hist = []
+# We create the vortex model with these two point vortices and the circle and advance the position of the point vortices over some time. We use `OrdinaryDiffEq.RK4()` for the time stepping and we compute the impulse history with `impulse` in a post-processing step.
+
+model = VortexModel(g,bodies=[pfb],vortices=[v1,v2]);
+
+function rhs(X,model,t)
+    setvortexpositions!(model,X)
+    Ẋ = vortexvelocities!(model)
+    return Ẋ
+end
+
+import OrdinaryDiffEq
+X = getvortexpositions(model)
+prob = OrdinaryDiffEq.ODEProblem(rhs,X,(0.0,64.0),model);
+sol = OrdinaryDiffEq.solve(prob,dt=0.1,OrdinaryDiffEq.RK4(),dense=false,adaptive=false);
+
+# Using the history of the vortex positions in `sol.u`, we can calculate the impulse history.
 Px_numerical_hist = []
 Py_numerical_hist = []
-
-for t in T
-    Ẋ = vortexvelocities!(model)
-    X = getvortexpositions(model)
-    X = X + Ẋ*Δt
-    setvortexpositions!(model,X)
-
-    push!(X_hist,X)
-
+for u in sol.u
+    setvortexpositions!(model,u)
     Px, Py = impulse(model)
     push!(Px_numerical_hist,Px)
     push!(Py_numerical_hist,Py)
 end
 
-# When we compare the trajectories and impulse history, the numerical and anaylytical solution should match closely, which is indeed the case.
+# When we compare the trajectories and impulse history, the numerical and analytical solution should match closely, which is indeed the case.
 plot(circle,fillcolor=:black,fillrange=0,fillalpha=0.25,linecolor=:black,linewidth=2,xlabel="x",ylabel="y")
 scatter!(model.vortices.x,model.vortices.y,color=:red)
 plot!(x_trajectory,y_trajectory_upper,linecolor=:red,label="exact")
 plot!(x_trajectory,y_trajectory_lower,linecolor=:red,label="")
-plot!((X->X[1]).(X_hist),(X->X[3]).(X_hist),color=:blue,linestyle=:dash,label="simulated")
-plot!((X->X[2]).(X_hist),(X->X[4]).(X_hist),color=:blue,linestyle=:dash,label="")
+plot!(map(s->s.u[1],sol.u),map(s->s.v[1],sol.u),color=:blue,linestyle=:dash,label="simulated")
+plot!(map(s->s.u[2],sol.u),map(s->s.v[2],sol.u),color=:blue,linestyle=:dash,label="")
 
 #
 plot(x_trajectory,Px_exact,color=:red,label="exact",xlabel="x",ylabel="Px")
-plot!((X->X[1]).(X_hist),Px_numerical_hist,color=:blue,linestyle=:dash,label="simulated")
+plot!(map(s->s.u[1],sol.u),Px_numerical_hist,color=:blue,linestyle=:dash,label="simulated")
 
 #=
 #### Flat plate

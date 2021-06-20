@@ -102,6 +102,26 @@ scatter!([v.x],[v.y],color=:black,markersize=2,xlabel="x",ylabel="y")
 plot(sol.f./Δs,label="f/ds",xlabel="body point index")
 plot!(γ,label="gamma")
 
+# Finally, we can also check if the vortex will move around the cylinder on a circular path if we advance the system in time, as predicted by analytical potential flow theory. The period of the circular motion can be easily determined by calculating the velocity induced by the image vortex at $R_c^2/R_v$:
+
+Vv = Γv/(2π*(Rv-Rc^2/Rv))
+T = 2π*Rv/Vv
+
+# For the time stepping, we again use the fourth-order Runge Kutta scheme from `OrdinaryDiffEq.jl`.
+import OrdinaryDiffEq
+function rhs(X,model,t)
+    setvortexpositions!(model,X)
+    Ẋ = vortexvelocities!(model)
+    return Ẋ
+end
+X = getvortexpositions(model)
+prob = OrdinaryDiffEq.ODEProblem(rhs,X,(0.0,T),model);
+sol = OrdinaryDiffEq.solve(prob,dt=0.1,OrdinaryDiffEq.RK4(),dense=false,adaptive=false);
+plot(body,fillcolor=:black,fillrange=0,fillalpha=0.25,linecolor=:black,linewidth=2)
+plot!(map(s->s.u[1],sol.u),map(s->s.v[1],sol.u))
+scatter!([v.x],[v.y],color=:black,markersize=2,xlabel="x",ylabel="y")
+
+
 #jl @testset "Vortex near cylinder" begin
 #jl     import OrdinaryDiffEq
 #jl
