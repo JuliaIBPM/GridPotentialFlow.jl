@@ -183,13 +183,38 @@ function (T::RigidBodyTools.RigidTransform)(b::PotentialFlowBody)
     return b
 end
 
-function RigidBodyTools.dlength(b::PotentialFlowBody)
-    dlength(b.points)
+@inline RigidBodyTools.dlength(b::PotentialFlowBody) = dlength(b.points)
+
+@inline RigidBodyTools.dlengthmid(b::PotentialFlowBody) = dlengthmid(b.points)
+
+@inline RigidBodyTools.normalmid(b::PotentialFlowBody) = normalmid(b.points)
+
+function RigidBodyTools.dlengthmid(bl::AbstractVector{T}) where T<:PotentialFlowBody
+    ds = Float64[]
+    for b in bl
+        dsb = dlengthmid(b)
+        append!(ds,dsb)
+    end
+    return ds
 end
 
-function RigidBodyTools.dlengthmid(b::PotentialFlowBody)
-    dlengthmid(b.points)
+function RigidBodyTools.normalmid(bl::AbstractVector{T}) where T<:PotentialFlowBody
+    nx = Float64[]
+    ny = Float64[]
+    for b in bl
+        nxb, nyb = normalmid(b)
+        append!(nx,nxb)
+        append!(ny,nyb)
+    end
+    return nx, ny
 end
+
+ImmersedLayers.areas(b::PotentialFlowBody) = areas(b.points)
+ImmersedLayers.normals(b::PotentialFlowBody) = normals(b.points)
+
+ImmersedLayers.areas(bl::AbstractVector{T}) where T<:PotentialFlowBody = dlengthmid(bl)
+ImmersedLayers.normals(bl::AbstractVector{T}) where T<:PotentialFlowBody = VectorData(normalmid(bl))
+
 
 function Base.show(io::IO, b::PotentialFlowBody)
     Ne = length(b.edges)

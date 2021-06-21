@@ -7,6 +7,7 @@ using RecipesBase
 
 @reexport using CartesianGrids
 @reexport using RigidBodyTools
+@reexport using ImmersedLayers
 
 include("suctionparameter.jl")
 include("bodies.jl")
