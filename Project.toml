@@ -19,11 +19,13 @@ UnPack = "3a884ed6-31ef-47d7-9d2a-63182c4928ed"
 [compat]
 CartesianGrids = "0.1.13"
 DocStringExtensions = "0.8.4"
+ImmersedLayers = "0.1.5"
 LinearMaps = "3"
 RecipesBase = "1.1"
 Reexport = "0.2.0, 1.0"
 RigidBodyTools = "0.1.12"
 StructArrays = "0.5"
+UnPack = "1.0"
 julia = "1.4"
 
 [extras]
