@@ -28,7 +28,7 @@ $(TYPEDFIELDS)
 # Examples
 (under construction)
 """
-mutable struct VortexModel{Nb,Ne,TS<:Union{AbstractPotentialFlowSystem,Laplacian},TU<:Nodes,TE<:Edges,TF<:ScalarData,TX<:VectorData,ILS<:ILMSystem}
+mutable struct VortexModel{Nb,Ne,TS<:Union{AbstractPotentialFlowSystem,Laplacian},TU<:Nodes,TE<:Edges,TF<:ScalarData,TX<:VectorData,ILS<:Union{ILMSystem,Nothing}}
     """g: The grid on which the vortex model is defined."""
     g::PhysicalGrid
     """bodies: Bodies in the vortex model."""
@@ -82,13 +82,14 @@ function VortexModel(g::PhysicalGrid, bodies::Vector{PotentialFlowBody}, vortice
     _w = Nodes(Dual,size(g))
     _ψb = ScalarData(sizef)
 
-    prob = GridPotentialILMProblem(g,bodies,scaling=GridScaling)
-    ilsys = ImmersedLayers.__init(prob)
-
     L = plan_laplacian(size(_nodedata),with_inverse=true)
     if Nb == 0
         system = L
+        ilsys = nothing
     else
+        prob = GridPotentialILMProblem(g,bodies,scaling=GridScaling)
+        ilsys = ImmersedLayers.__init(prob)
+            
         regop = Regularize(VectorData(collect(bodies)), cellsize(g), I0=origin(g), ddftype = CartesianGrids.Yang3, issymmetric=true)
         Rmat,_ = RegularizationMatrix(regop, _f, _nodedata)
         Emat = InterpolationMatrix(regop, _nodedata, _f)
