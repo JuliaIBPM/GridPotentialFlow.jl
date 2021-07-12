@@ -4,13 +4,11 @@ using Reexport
 using StructArrays
 using DocStringExtensions
 using RecipesBase
+using UnPack
 
 @reexport using CartesianGrids
 @reexport using RigidBodyTools
 @reexport using ImmersedLayers
-using UnPack
-
-export pressurejump!, pressure!, velocity!, surface_velocity!, sided_pressures
 
 include("suctionparameter.jl")
 include("bodies.jl")

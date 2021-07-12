@@ -1,4 +1,4 @@
-
+export pressurejump!, pressure!, velocity!, surface_velocity!, sided_pressures
 
 function pressurejump!(dp::ScalarData{N},γn::ScalarData{N},γnp1::ScalarData{N},v̄s::VectorData{N},Δt::Real,sys::ImmersedLayers.ILMSystem{<:GridPotentialILMProblem}) where {N}
     @unpack base_cache, extra_cache = sys
