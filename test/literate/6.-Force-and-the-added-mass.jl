@@ -181,15 +181,17 @@ T = 0.0:Δt:tf;
 #md # sys₊ = deepcopy(sys₀) # Used for storage during time-marching
 #md # ẋs = (motion, allocate_velocity(blobs))
 #md # imp = ComplexF64[];
+#md # angimp = Float64[];
 #md # t_hist = Float64[]
 #md # global t = 0
 #md # push!(t_hist,t)
 #md # # Time stepping
 #md # for tloc in T[2:end]
-#md #     global t += Δt
 #md #     global sys
 #md #     global sys₊
 #md #     push!(imp,Elements.impulse(sys))
+#md #     push!(angimp,Elements.angularimpulse(sys)-t*ċ*imag(Elements.impulse(sys))) # angular impulse about plate centroid
+#md #     global t += Δt
 #md #     push!(t_hist,t)
 #md #     local plate, ambient_ω = sys
 #md #     local motion, ambient_u = ẋs
@@ -199,6 +201,7 @@ T = 0.0:Δt:tf;
 #md #     shed_new_vorticity!(sys[2], sys[1], ẋs[1], t, σLE, σTE)
 #md # end
 #md # force = -diff(imp)/Δt;
+#md # moment = -diff(angimp)/Δt;
 #md # ```
 
 #!md # Potential Flow
@@ -236,15 +239,17 @@ T = 0.0:Δt:tf;
 #!md sys₊ = deepcopy(sys₀) # Used for storage during time-marching
 #!md ẋs = (motion, allocate_velocity(blobs))
 #!md imp = ComplexF64[];
+#!md angimp = Float64[];
 #!md t_hist = Float64[]
 #!md global t = 0
 #!md push!(t_hist,t)
 #!md # Time stepping
 #!md for tloc in T[2:end]
-#!md     global t += Δt
 #!md     global sys
 #!md     global sys₊
 #!md     push!(imp,Elements.impulse(sys))
+#!md     push!(angimp,Elements.angularimpulse(sys)-t*ċ*imag(Elements.impulse(sys))) # angular impulse about plate centroid
+#!md     global t += Δt
 #!md     push!(t_hist,t)
 #!md     local plate, ambient_ω = sys
 #!md     local motion, ambient_u = ẋs
@@ -254,6 +259,7 @@ T = 0.0:Δt:tf;
 #!md     shed_new_vorticity!(sys[2], sys[1], ẋs[1], t, σLE, σTE)
 #!md end
 #!md force = -diff(imp)/Δt;
+#!md moment = -diff(angimp)/Δt;
 
 Δx = 0.01
 xlim = (-0.5,2)
@@ -295,6 +301,7 @@ Then we enter a time stepping loop and record the impulse every time we create n
 
 Px_hist = Float64[];
 Py_hist = Float64[];
+A_hist = Float64[]
 sol = solve(model);
 for tloc in T[2:end]
     X = getvortexpositions(model) # gets bigger every time step because we add vortices
@@ -304,6 +311,8 @@ for tloc in T[2:end]
     setvortexstrengths!(model, sol.δΓ_vec, length(X.u)-1:length(X.u))
     subtractcirculation!(model.bodies, sol.δΓ_vec)
     Px, Py = impulse(model)
+    A = angularimpulse(model)
+    push!(A_hist,A)
 
     vortexvelocities!(Ẋ, model, sol.ψ)
     X .= X .+ Ẋ*Δt
@@ -319,6 +328,7 @@ end
 
 Fx_hist = -diff(Px_hist)/Δt;
 Fy_hist = -diff(Py_hist)/Δt;
+M_hist = -diff(A_hist)/Δt;
 
 # We can now compare the positions of the point vortices by shifting the `PotentialFlow.jl` solution by `-tf*ċ` such that the origin of the frame of reference coincides with the center plate. Superimposing the `GridPotentialFlow.jl` solution then shows that the positions of the point vortices agree very well.
 
@@ -335,6 +345,16 @@ plot!(T[1:end-1],Py_hist,color=:red,label="GridPotentialFlow.jl")
 plot(xlabel="t",ylabel="Fy")
 plot!(T[2:end-1],imag.(force),color=:blue,label="PotentialFlow.jl")
 plot!(T[2:end-1],Fy_hist,color=:red,label="GridPotentialFlow.jl")
+
+# Similarly for the angular impulse and moment about the center of the plate
+plot(xlabel="t",ylabel="A")
+plot!(T[1:end-1],angimp,color=:blue,label="PotentialFlow.jl")
+plot!(T[1:end-1],A_hist,color=:red,label="GridPotentialFlow.jl")
+
+#
+plot(xlabel="t",ylabel="M")
+plot!(T[2:end-1],moment,color=:blue,label="PotentialFlow.jl")
+plot!(T[2:end-1],M_hist,color=:red,label="GridPotentialFlow.jl")
 
 #=
 ## Added mass
