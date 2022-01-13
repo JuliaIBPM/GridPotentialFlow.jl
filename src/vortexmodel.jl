@@ -2,7 +2,7 @@ import CartesianGrids: curl!, Laplacian
 import LinearAlgebra: Diagonal, norm
 import Base: show
 
-export VortexModel, streamfunction, streamfunction!, vorticity, vorticity!, vortexvelocities!, _computeregularizationmatrix, setvortexstrengths!, setvortexpositions!, getvortexpositions, setvortices!, pushvortices!, setU∞, impulse, addedmass, solve, solve!
+export VortexModel, streamfunction, streamfunction!, vorticity, vorticity!, vortexvelocities!, _computeregularizationmatrix, setvortexstrengths!, setvortexpositions!, getvortexpositions, setvortices!, pushvortices!, setU∞, impulse, angularimpulse, addedmass, solve, solve!
 
 # TODO: mention frame of reference for computeimpulse
 # TODO: consider no deepcopy for new vortices in the methods and use deepcopy in the scripts instead
@@ -459,7 +459,7 @@ end
 """
 $(SIGNATURES)
 
-Computes the impulse associated with the body motions in the vortex model `vm` and the vortex sheet strength in `sol`. Note that newly inserted vortices should have their strengths set prior to calling this function to be included in the impulse calculation.
+Computes the impulse associated with the current state vortices and bodies in the vortex model `vm` and the vortex sheet strength in `sol`. Note that newly inserted vortices should have their strengths set prior to calling this function to be included in the impulse calculation.
 """
 function impulse(sol::TS, vm::VortexModel) where {TS<:AbstractIBPoissonSolution}
     # Compute vorticity field again, because now it can contain the vorticity of newly shedded vortices
@@ -470,11 +470,76 @@ end
 """
 $(SIGNATURES)
 
+Computes the impulse associated with the current state vortices in the vortex model `vm`.
+"""
+function impulse(sol::PoissonSolution, vm::VortexModel)
+    # Compute vorticity field again, because now it can contain the vorticity of newly shedded vortices
+    vorticity!(vm._nodedata, vm)
+    impulse(vm, vm._nodedata, ScalarData(0))
+end
+
+"""
+$(SIGNATURES)
+
 Computes the impulse associated with the current state vortices and bodies in the vortex model `vm`. Note that newly inserted vortices should have their strengths set prior to calling this function to be included in the impulse calculation.
 """
 function impulse(vm::VortexModel)
     sol = solve(vm)
     impulse(sol, vm)
+end
+
+"""
+$(SIGNATURES)
+
+Computes the angular impulse associated with the vorticity `wphysical`, the bound vortex sheet strength `fphysical`, and the velocities of the discrete points of the bodies in `vm`.
+"""
+function angularimpulse(vm::VortexModel{Nb,Ne}, wphysical::Nodes{Dual}, fphysical::ScalarData) where {Nb,Ne}
+
+    xg, yg = coordinates(wphysical, vm.g)
+    Δx = cellsize(vm.g)
+    _bodypointsvelocity!(vm._bodyvectordata, vm.bodies)
+
+    # Formula 61 (see formula 6.16 in book)
+    a = -0.5*Δx^2*sum(wphysical.*(yg').^2 + wphysical.*(xg.^2))
+
+    for i in 1:Nb
+        r = getrange(vm.bodies,i)
+        a += _angularimpulsesurfaceintegral(vm.bodies[i].points, fphysical[r], vm._bodyvectordata.u[r], vm._bodyvectordata.v[r])
+    end
+
+    return a
+end
+
+"""
+$(SIGNATURES)
+
+Computes the angular impulse associated with the current state vortices and bodies in the vortex model `vm` and the vortex sheet strength in `sol`. Note that newly inserted vortices should have their strengths set prior to calling this function to be included in the impulse calculation.
+"""
+function angularimpulse(sol::TS, vm::VortexModel) where {TS<:AbstractIBPoissonSolution}
+    # Compute vorticity field again, because now it can contain the vorticity of newly shedded vortices
+    vorticity!(vm._nodedata, vm)
+    angularimpulse(vm, vm._nodedata, sol.f)
+end
+
+"""
+$(SIGNATURES)
+
+Computes the angular impulse associated with the current state vortices in the vortex model `vm`.
+"""
+function angularimpulse(sol::PoissonSolution, vm::VortexModel)
+    # Compute vorticity field again, because now it can contain the vorticity of newly shedded vortices
+    vorticity!(vm._nodedata, vm)
+    angularimpulse(vm, vm._nodedata, ScalarData(0))
+end
+
+"""
+$(SIGNATURES)
+
+Computes the angular impulse associated with the current state vortices and bodies in the vortex model `vm`. Note that newly inserted vortices should have their strengths set prior to calling this function to be included in the impulse calculation.
+"""
+function angularimpulse(vm::VortexModel)
+    sol = solve(vm)
+    angularimpulse(sol, vm)
 end
 
 """
@@ -522,9 +587,24 @@ function _impulsesurfaceintegral(body::Body{N,RigidBodyTools.OpenBody}, f, u, v)
     return _crossproductsurfaceintegral(body,f)
 end
 
+function _angularimpulsesurfaceintegral(body::Body{N,RigidBodyTools.ClosedBody}, f, u, v) where {N}
+    nx,ny = normalmid(body)
+    Δs = dlengthmid(body)
+    return _doublecrossproductsurfaceintegral(body,(f./Δs + nx.*v - ny.*u).*Δs)
+end
+
+function _angularimpulsesurfaceintegral(body::Body{N,RigidBodyTools.OpenBody}, f, u, v) where {N}
+    return _doublecrossproductsurfaceintegral(body,f)
+end
+
 function _crossproductsurfaceintegral(body::Body, z)
     rx,ry = collect(body)
     return [ry'*z, -rx'*z]
+end
+
+function _doublecrossproductsurfaceintegral(body::Body, z)
+    rx,ry = collect(body)
+    return -(rx.^2+ry.^2)'*z
 end
 
 function _bodypointsvelocity!(v::VectorData, bodies)

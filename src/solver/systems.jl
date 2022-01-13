@@ -98,7 +98,7 @@ struct SteadyRegularizedIBPoisson{Nb,Ne,TU,TF} <: AbstractPotentialFlowSystem{TU
     e_vec::Vector{TF}
     """f₀: Unregularized bound vortex sheet strength due to a uniform unit boundary condition for the streamfunction on all immersed bodies."""
     f₀::TF
-    """f₀_vec: Array of unregularized bound vortex sheet strengths with the i-th entry the bound vortex sheet strength due to a uniform unit boundary condition for the streamfunction on the i-th immersed body and zero everywhere else."""
+    """f₀_vec: Array of vectors with the i-th entry of the j-th vector equal to f₀[i] if i is an index of the points that belong to the j-th body and zero otherwise."""
     f₀_vec::Vector{TF}
 end
 
@@ -114,8 +114,7 @@ function SteadyRegularizedIBPoisson(L::CartesianGrids.Laplacian, R::Regularizati
     _TF_buf .= 1.0
     ibp = IBPoisson(L, R, E)
     ldiv!(IBPoissonSolution(_TU_buf,f₀),ibp,IBPoissonRHS(_TU_buf,_TF_buf), onlyf=true, zerow=true)
-    f₀_vec = [TF() for i=1:Nb]
-    _computef₀_vec!(f₀_vec, ibp, one_vec, _TU_buf)
+    f₀_vec = [f₀.*one_vec[i] for i=1:Nb]
 
     R̃ = deepcopy(R)
     R̃.M .= R̃.M*Diagonal(f₀)
@@ -143,7 +142,7 @@ struct UnsteadyRegularizedIBPoisson{Nb,Ne,TU,TF} <: AbstractPotentialFlowSystem{
     vidx_vec::Vector{Vector{Int}}
     """f₀: Unregularized vortex sheet strength due to a uniform unit boundary condition for the streamfunction on all immersed bodies."""
     f₀::TF
-    """f₀_vec: Array of unregularized bound vortex sheet strengths with the i-th entry the vortex sheet strength due to a uniform unit boundary condition for the streamfunction on the i-th immersed body and zero everywhere else."""
+    """f₀_vec: Array of vectors with the i-th entry of the j-th vector equal to f₀[i] if i is an index of the points that belong to the j-th body and zero otherwise."""
     f₀_vec::Vector{TF}
     """f̃₀_vec: Array of unregularized bound vortex sheet strengths, obtained using the re-scaled regularization operator, with the i-th entry the bound vortex sheet strength due to a uniform unit boundary condition for the streamfunction on the i-th immersed body and zero everywhere else."""
     f̃₀_vec::Vector{TF}
@@ -179,8 +178,7 @@ function UnsteadyRegularizedIBPoisson(L::CartesianGrids.Laplacian, R::Regulariza
     _f_buf .= 1.0
     ldiv!(IBPoissonSolution(_TU_buf,f₀),ibp,IBPoissonRHS(_TU_buf,_f_buf), onlyf=true, zerow=true)
 
-    f₀_vec = [TF() for i=1:Nb]
-    _computef₀_vec!(f₀_vec, ibp, one_vec, _TU_buf)
+    f₀_vec = [f₀.*one_vec[i] for i=1:Nb]
 
     R̃ = deepcopy(R)
     R̃.M .= R̃.M*Diagonal(f₀)
