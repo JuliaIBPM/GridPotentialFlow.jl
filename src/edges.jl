@@ -6,6 +6,17 @@ const SuctionParameter = Float64
 
 const f̃Limit = Float64
 
+struct EdgeCache{FT,RCT} <: ImmersedLayers.AbstractExtraILMCache
+    f₀ :: FT
+    f̃temp :: FT
+    R̃curl :: RCT
+end
+
+function EdgeCache(base_cache::BasicILMCache)
+
+    # EdgeCache(f₀,f̃temp,R̃curl)
+end
+
 struct SuctionParameterRange
     σmin::SuctionParameter
     σmax::SuctionParameter
