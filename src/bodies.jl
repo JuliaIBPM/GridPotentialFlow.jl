@@ -1,13 +1,36 @@
-import Base: show
+import Base: show, *, /
 
-export PotentialFlowBody, subtractcirculation!, getΓ, setΓ!
+export PotentialFlowBody, subtractcirculation!, getΓ, setΓ!, SuctionParameter, SuctionParameterRange
+
+const SuctionParameter = Float64
+
+struct SuctionParameterRange
+    σmin::SuctionParameter
+    σmax::SuctionParameter
+
+    function SuctionParameterRange(σ₁,σ₂)
+        σsorted = sort([σ₁,σ₂])
+        new(σsorted[1],σsorted[2])
+    end
+end
+
+# Multiply and divide by a constant
+function (*)(p::SuctionParameterRange,c::Number)
+    return SuctionParameterRange(c*p.min,c*p.max)
+end
+
+(*)(c::Number,p::SuctionParameterRange) = *(p,c)
+
+function (/)(p::SuctionParameterRange,c::Number)
+    return SuctionParameterRange(p.min/c, p.max/c)
+end
 
 """
 $TYPEDEF
 
 Defines a `RigidBodyTools.Body` that combines a `RigidBodyTools.Body` with a circulation `Γ`, information about the edges `edges` and their corresponding suction parameters.
 """
-mutable struct PotentialFlowBody{N,C,ST} <: Body{N,C} where {ST<:Union{Vector{SuctionParameter},Vector{SuctionParameterRange}}}
+mutable struct PotentialFlowBody{N,C,ST,NE} <: Body{N,C} where {ST<:Union{Vector{SuctionParameter},Vector{SuctionParameterRange}}}
     """body: `RigidBodyTools.Body`"""
     body::Body{N,C}
     """Γ: Current circulation about the body."""
@@ -33,7 +56,7 @@ function PotentialFlowBody(b::Body{N,C}; Γ = 0.0, edges = Int64[], σ = Suction
         println("Not enough suction parameters provided. Setting all suction parameters to zero.")
     end
 
-    return PotentialFlowBody(b,Γ,edges,σ)
+    return PotentialFlowBody{N,C,typeof(σ),Ne}(b,Γ,edges,σ)
 end
 
 for f in [:diff,:endpoints,:midpoints,:centraldiff]
@@ -59,30 +82,51 @@ function setΓ!(b::PotentialFlowBody, Γ::Float64)
     b.Γ = Γ
 end
 
-# """
-# $(TYPEDSIGNATURES)
-#
-# Returns the indices in the global set of surface point data of the regularized points of body `i` in `b`.
-# """
-# function getregularizededges(b::AbstractVector{PotentialFlowBody},i::Int)
-#     r = getrange(b,i)
-#     idx = deepcopy(b[i].edges) .+ r[1] .- 1
-#     return idx
-# end
-#
-# """
-# $(TYPEDSIGNATURES)
-#
-# Returns the indices in the global set of surface point data of all regularized points in `b`.
-# """
-# function getregularizededges(b::AbstractVector{PotentialFlowBody})
-#     idx = Int64[]
-#     for i in 1:length(b)
-#         append!(idx,getregularizededges(b,i))
-#     end
-#     return idx
-# end
-#
+"""
+$(TYPEDSIGNATURES)
+
+Returns the active constraint for body `b`. This is either a prescribed circulation if there are no regularized edges, or a suction parameter (range) if there are regularized edges.
+"""
+function constraint(b::PotentialFlowBody{N,C,ST,0}) where {N,C,ST}
+    return b.Γ
+end
+
+function constraint(b::PotentialFlowBody{N,C,ST,1}) where {N,C,ST}
+    return b.σ[1]
+end
+
+function constraint(b::Body)
+    return constraint(PotentialFlowBody(b))
+end
+
+"""
+$(TYPEDSIGNATURES)
+
+Returns the indices in the global set of surface point data of the regularized points of body `i` in `bl`.
+"""
+function getregularizededges(bl,i::Int)
+    if bl[i] isa PotentialFlowBody
+        r = getrange(bl,i)
+        idx = deepcopy(bl[i].edges) .+ r[1] .- 1
+        return idx
+    else
+        return []
+    end
+end
+
+"""
+$(TYPEDSIGNATURES)
+
+Returns the indices in the global set of surface point data of all regularized points in `bl`.
+"""
+function getregularizededges(bl)
+    idx = Int64[]
+    for i in 1:length(bl)
+        append!(idx,getregularizededges(bl,i))
+    end
+    return idx
+end
+
 # """
 # $(TYPEDSIGNATURES)
 #
