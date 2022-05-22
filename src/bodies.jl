@@ -85,23 +85,6 @@ end
 """
 $(TYPEDSIGNATURES)
 
-Returns the active constraint for body `b`. This is either a prescribed circulation if there are no regularized edges, or a suction parameter (range) if there are regularized edges.
-"""
-function constraint(b::PotentialFlowBody{N,C,ST,0}) where {N,C,ST}
-    return b.Γ
-end
-
-function constraint(b::PotentialFlowBody{N,C,ST,1}) where {N,C,ST}
-    return b.σ[1]
-end
-
-function constraint(b::Body)
-    return constraint(PotentialFlowBody(b))
-end
-
-"""
-$(TYPEDSIGNATURES)
-
 Returns the indices in the global set of surface point data of the regularized points of body `i` in `bl`.
 """
 function getregularizededges(bl,i::Int)

@@ -21,15 +21,16 @@ function ConstraintsCache(RTLinvR,base_cache::BasicILMCache)
     ones_i = zeros_surfacescalar(base_cache)
     for i in 1:length(bl)
         ones_i .= 0.0
-        ones_i[getrange(bl,i)] .= -1.0
-        f₀_vec[i] .= RTLinvR\ones_i  #Should use ldiv!(γtemp,RTLinvR) for no allocation or even better implement CG so we don't have to construct RTLinvR.
+        ones_i[getrange(bl,i)] .= 1.0
+        f₀_vec[i] .= -RTLinvR\ones_i  #Should use ldiv!(γtemp,RTLinvR) for no allocation or even better implement CG so we don't have to construct RTLinvR.
         regularize!(gcurl_cache,f₀_vec[i],base_cache)
         inverse_laplacian!(ψ₀_vec[i],gcurl_cache,base_cache)
+        ψ₀_vec[i] .*= -1
     end
 
     # Fill up B₂₂ matrix. Not correct for shedding bodies
     for i in 1:length(bl)
-        B₂₂_vec[i][getrange(bl,i)] .= createB₂₂entry(bl[i],base_cache)
+        B₂₂_vec[i][getrange(bl,i)] .= createB₂₂entry(bl[i],f₀_vec[i][getrange(bl,i)],base_cache)
     end
 
     # Precompute S matrix. Not correct for shedding bodies
@@ -40,20 +41,29 @@ function ConstraintsCache(RTLinvR,base_cache::BasicILMCache)
     ConstraintsCache{typeof(ψ₀_vec),typeof(f₀_vec),typeof(B₂₂_vec),typeof(S)}(ψ₀_vec,f₀_vec,B₂₂_vec,S)
 end
 
-function createB₂₂entry(body::PotentialFlowBody{N,C,ST,0},base_cache) where {N,C,ST}
+function createB₂₂entry(body::PotentialFlowBody{N,C,ST,0},f₀,base_cache) where {N,C,ST}
     B₂₂entry = ScalarData(N)
     B₂₂entry .= 1.0
     return B₂₂entry
 end
 
-function createB₂₂entry(body::PotentialFlowBody{N,C,ST,1},base_cache) where {N,C,ST}
+function createB₂₂entry(body::PotentialFlowBody{N,C,ST,1},f₀,base_cache) where {N,C,ST}
     B₂₂entry = ScalarData(N)
-    B₂₂entry[body.edges[1]] .= 1.0 # INCORRECT! Still have to divide by Gamma0
+    B₂₂entry[body.edges[1]] = 1.0
+    B₂₂entry ./= f₀
     return B₂₂entry
 end
 
-function createB₂₂entry(body::Body,base_cache)
-    return createB₂₂entry(PotentialFlowBody(body),base_cache)
+function createB₂₂entry(body::Body,f₀,base_cache)
+    return createB₂₂entry(PotentialFlowBody(body),f₀,base_cache)
+end
+
+function constraint(body::PotentialFlowBody{N,C,ST,0}) where {N,C,ST}
+    return body.Γ
+end
+
+function constraint(body::PotentialFlowBody{N,C,ST,1}) where {N,C,ST}
+    return _computef̃limit(body.σ[1],body,nothing)
 end
 
 struct f̃Limits
