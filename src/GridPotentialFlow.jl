@@ -80,7 +80,7 @@ Defining the extra cache and extending prob_cache
 
 @ilmproblem PotentialFlow vector
 
-struct PotentialFloψcache{HLMT,VORT,SNKT,CONT,PHIST,PSIST,FT,GT,VT} <: ImmersedLayers.AbstractExtraILMCache
+struct PotentialFlowcache{HLMT,VORT,SNKT,CONT,PHIST,PSIST,FT,GT,VT} <: ImmersedLayers.AbstractExtraILMCache
     # Cache for Helmholtz decomposition
     helmcache :: HLMT
     # Cache for vortex elements
@@ -115,14 +115,14 @@ function ImmersedLayers.prob_cache(prob::PotentialFlowProblem,base_cache::BasicI
 
     constraintscache = ConstraintsCache(RTLinvR,base_cache)
 
-    PotentialFloψcache(helmcache,vortcache,sinkcache,constraintscache,CLinvCT,RTLinvR,γtemp,dϕtemp,vtemp)
+    PotentialFlowcache(helmcache,vortcache,sinkcache,constraintscache,CLinvCT,RTLinvR,γtemp,dϕtemp,vtemp)
 end
 
 function scalarpotential!(ϕ::Nodes{Primal},dϕ,vn,dvn,sys::ILMSystem,t)
     @unpack extra_cache, base_cache, bc = sys
     @unpack helmcache, constraintscache, CLinvCT, vtemp = extra_cache
-    @unpack ftemp, divv_temp = helmcache.ϕcache
-    @unpack stemp, curlv_temp = helmcache.ψcache
+    @unpack ftemp, divv_temp = helmcache.dcache
+    @unpack stemp, curlv_temp = helmcache.wcache
 
     # Find the potential
     regularize!(ftemp,dvn,base_cache)
@@ -157,7 +157,7 @@ function streamfunction!(ψ::Nodes{Dual},γ,ψb,dψb,constraintscache::CONT,sys:
 
     @unpack extra_cache, base_cache, bc = sys
     @unpack helmcache, constraintscache, RTLinvR, vtemp = extra_cache
-    @unpack stemp, curlv_temp = helmcache.ψcache
+    @unpack stemp, curlv_temp = helmcache.wcache
     @unpack ψ₀_vec, f₀_vec, B₂₂_vec, S = constraintscache
 
     Nb = length(base_cache.bl)
@@ -184,7 +184,7 @@ function streamfunction!(ψ::Nodes{Dual},γ,ψb,dψb,constraintscache::CONT,sys:
     @unpack extra_cache, forcing, base_cache, phys_params = sys
     @unpack bl = base_cache
     @unpack helmcache, RTLinvR, vtemp = extra_cache
-    @unpack stemp, curlv_temp = helmcache.ψcache
+    @unpack stemp, curlv_temp = helmcache.wcache
 
     regularize_normal_cross!(vtemp,dψb,base_cache)
     curl!(curlv_temp,vtemp,base_cache)
@@ -205,24 +205,24 @@ end
 function streamfunction(sys::ILMSystem,t)
     @unpack base_cache, extra_cache, forcing = sys
     @unpack helmcache, constraintscache, γtemp = extra_cache
-    @unpack dv, dψb, ψb, stemp = helmcache.ψcache
+    @unpack dv, dvn, vn, stemp = helmcache.wcache
 
     ψ = zeros_gridcurl(sys)
     pts = points(sys)
 
     # get Dirichlet boundary conditions for ψ
     prescribed_surface_average!(dv,t,sys)
-    _ψbfromvb!(ψb,dv,sys)
+    _ψbfromvb!(vn,dv,sys)
     prescribed_surface_jump!(dv,t,sys)
-    _ψbfromvb!(dψb,dv,sys)
+    _ψbfromvb!(dvn,dv,sys)
 
     # subtract influence of free stream
     freestream_func = GridPotentialFlow.get_freestream_func(forcing)
     Uinf, Vinf = freestream_func(t,sys.phys_params)
-    ψb .-= Uinf .* pts.v .- Vinf .* pts.u
+    vn .-= Uinf .* pts.v .- Vinf .* pts.u
 
     # compute streamfunction
-    streamfunction!(ψ,γtemp,ψb,dψb,constraintscache,sys,t)
+    streamfunction!(ψ,γtemp,vn,dvn,constraintscache,sys,t)
 
     # add free stream streamfunction field
     vectorpotential_uniformvecfield!(stemp,Uinf,Vinf,base_cache)
@@ -234,24 +234,24 @@ end
 function streamfunction(sys::ILMSystem)
     @unpack base_cache, extra_cache, forcing = sys
     @unpack helmcache, constraintscache, γtemp = extra_cache
-    @unpack dv, dψb, ψb, stemp = helmcache.ψcache
+    @unpack dv, dvn, vn, stemp = helmcache.wcache
 
     ψ = zeros_gridcurl(sys)
     pts = points(sys)
 
     # get Dirichlet boundary conditions for ψ
     prescribed_surface_average!(dv,sys)
-    _ψbfromvb!(ψb,dv,sys)
+    _ψbfromvb!(vn,dv,sys)
     prescribed_surface_jump!(dv,sys)
-    _ψbfromvb!(dψb,dv,sys)
+    _ψbfromvb!(dvn,dv,sys)
 
     # subtract influence of free stream
     freestream_func = GridPotentialFlow.get_freestream_func(forcing)
     Uinf, Vinf = freestream_func(0.0,sys.phys_params)
-    ψb .-= Uinf .* pts.v .- Vinf .* pts.u
+    vn .-= Uinf .* pts.v .- Vinf .* pts.u
 
     # compute streamfunction
-    streamfunction!(ψ,γtemp,ψb,dψb,constraintscache,sys,0.0)
+    streamfunction!(ψ,γtemp,vn,dvn,constraintscache,sys,0.0)
 
     # add free stream streamfunction field
     vectorpotential_uniformvecfield!(stemp,Uinf,Vinf,base_cache)
@@ -264,7 +264,7 @@ function scalarpotential(sys::ILMSystem,t)
     @unpack base_cache, extra_cache, forcing = sys
     @unpack nrm = base_cache
     @unpack helmcache, constraintscache, dϕtemp = extra_cache
-    @unpack dv, dvn, vn, ftemp = helmcache.ϕcache
+    @unpack dv, dvn, vn, ftemp = helmcache.dcache
 
     ϕ = zeros_griddiv(sys)
     pts = points(sys)
@@ -314,7 +314,7 @@ end
 
 function impulse(γ::ScalarData,sys,t)
     @unpack bl, ds, nrm, sdata_cache, sscalar_cache = sys.base_cache
-    @unpack dv = sys.extra_cache.helmcache.ψcache
+    @unpack dv = sys.extra_cache.helmcache.wcache
 
     surface_velocity!(dv,sys,t)
 
