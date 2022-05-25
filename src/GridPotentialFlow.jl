@@ -10,7 +10,7 @@ import MacroTools.@forward
 
 @reexport using ImmersedLayers
 
-export PotentialFlowProblem, setup_problem, streamfunction
+export PotentialFlowProblem, setup_problem, streamfunction, scalarpotential, impulse
 
 include("bodies.jl")
 include("constraints.jl")
@@ -46,8 +46,8 @@ end
 
 const DEFAULT_DS_TO_DX_RATIO = 1.4
 const DEFAULT_FREESTREAM_FUNC = default_freestream
-const default_vbplus_FUNC = default_vbplus
-const default_vbminus_FUNC = default_vbminus
+const DEFAULT_VBPLUS_FUNC = default_vbplus
+const DEFAULT_VBMINUS_FUNC = default_vbminus
 
 #=
 Process keywords
@@ -67,8 +67,8 @@ get_forcing_models(::Nothing) = get_forcing_models(Dict())
 
 function get_bc_func(bc_in::Dict)
     bc = Dict()
-    bc["exterior"] = haskey(bc_in,"exterior") ? bc_in["exterior"] : default_vbplus_FUNC
-    bc["interior"] = haskey(bc_in,"interior") ? bc_in["interior"] : default_vbminus_FUNC
+    bc["exterior"] = haskey(bc_in,"exterior") ? bc_in["exterior"] : DEFAULT_VBPLUS_FUNC
+    bc["interior"] = haskey(bc_in,"interior") ? bc_in["interior"] : DEFAULT_VBMINUS_FUNC
     return bc
 end
 
@@ -121,7 +121,7 @@ end
 function scalarpotential!(ϕ::Nodes{Primal},dϕ,vn,dvn,sys::ILMSystem,t)
     @unpack extra_cache, base_cache, bc = sys
     @unpack helmcache, constraintscache, CLinvCT, vtemp = extra_cache
-    @unpack ftemp, divv_temp = helmcache.dcache
+    @unpack ftemp, divv_temp = helmcache.ϕcache
     @unpack stemp, curlv_temp = helmcache.ψcache
 
     # Find the potential
@@ -221,6 +221,7 @@ function streamfunction(sys::ILMSystem,t)
     Uinf, Vinf = freestream_func(t,sys.phys_params)
     ψb .-= Uinf .* pts.v .- Vinf .* pts.u
 
+    # compute streamfunction
     streamfunction!(ψ,γtemp,ψb,dψb,constraintscache,sys,t)
 
     # add free stream streamfunction field
@@ -249,6 +250,7 @@ function streamfunction(sys::ILMSystem)
     Uinf, Vinf = freestream_func(0.0,sys.phys_params)
     ψb .-= Uinf .* pts.v .- Vinf .* pts.u
 
+    # compute streamfunction
     streamfunction!(ψ,γtemp,ψb,dψb,constraintscache,sys,0.0)
 
     # add free stream streamfunction field
@@ -258,15 +260,56 @@ function streamfunction(sys::ILMSystem)
     return ψ
 end
 
+function scalarpotential(sys::ILMSystem,t)
+    @unpack base_cache, extra_cache, forcing = sys
+    @unpack nrm = base_cache
+    @unpack helmcache, constraintscache, dϕtemp = extra_cache
+    @unpack dv, dvn, vn, ftemp = helmcache.ϕcache
+
+    ϕ = zeros_griddiv(sys)
+    pts = points(sys)
+
+    # get Neumann boundary conditions for ϕ
+    prescribed_surface_average!(dv,t,sys)
+    vn .= (nrm.u .* dv.u .+ nrm.v .* dv.v)
+    prescribed_surface_jump!(dv,t,sys)
+    dvn .= (nrm.u .* dv.u .+ nrm.v .* dv.v)
+
+    # subtract influence of free stream
+    freestream_func = GridPotentialFlow.get_freestream_func(forcing)
+    Uinf, Vinf = freestream_func(t,sys.phys_params)
+    vn .-= (Uinf .* nrm.u .+ Vinf .* nrm.v)
+
+    # compute scalar potential
+    scalarpotential!(ϕ,dϕtemp,vn,dvn,sys,t)
+
+    # add free stream scalar potential field
+    scalarpotential_uniformvecfield!(ftemp,Uinf,Vinf,base_cache)
+    ϕ .+= ftemp
+end
+
+function scalarpotential(sys::ILMSystem)
+
+end
+
 function impulse(ϕ::Nodes{Primal},dϕ::ScalarData,sys,t)
-    @unpack bl, ds, nrm, sscalar_cache = sys.base_cache
+    @unpack ds, nrm = sys.base_cache
 
-    # normal_interpolate
+    ϕb = zeros_surfacescalar(sys)
 
+    # compute ϕ̄b
+    interpolate!(ϕb,ϕ,sys)
 
-    # P = integrate(ϕb,ds)
+    # compute ϕ⁺b = ϕ̄b .+ 1/2*dϕ
+    ϕb .+= 1/2*dϕ
 
-    # return P
+    ϕ⁺bn = zeros_surface(sys)
+    ϕ⁺bn.u .= ϕb.*nrm.u
+    ϕ⁺bn.v .= ϕb.*nrm.v
+
+    P = -integrate(ϕ⁺bn,ds)
+
+    return P
 end
 
 function impulse(γ::ScalarData,sys,t)

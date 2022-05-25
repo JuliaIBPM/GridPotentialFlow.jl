@@ -66,6 +66,10 @@ function constraint(body::PotentialFlowBody{N,C,ST,1}) where {N,C,ST}
     return _computef̃limit(body.σ[1],body,nothing)
 end
 
+function constraint(body::Body) where {N,C,ST}
+    return 0.0
+end
+
 struct f̃Limits
     min::f̃Limit
     max::f̃Limit
