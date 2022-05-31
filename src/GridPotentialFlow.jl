@@ -118,40 +118,6 @@ function ImmersedLayers.prob_cache(prob::PotentialFlowProblem,base_cache::BasicI
     PotentialFlowcache(helmcache,vortcache,sinkcache,constraintscache,CLinvCT,RTLinvR,γtemp,dϕtemp,vtemp)
 end
 
-function scalarpotential!(ϕ::Nodes{Primal},dϕ,vn,dvn,sys::ILMSystem,t)
-    @unpack extra_cache, base_cache, bc = sys
-    @unpack helmcache, constraintscache, CLinvCT, vtemp = extra_cache
-    @unpack ftemp, divv_temp = helmcache.dcache
-    @unpack stemp, curlv_temp = helmcache.wcache
-
-    # Find the potential
-    regularize!(ftemp,dvn,base_cache)
-    inverse_laplacian!(ftemp,base_cache)
-
-    surface_grad!(dϕ,ftemp,base_cache)
-    dϕ .= vn - dϕ
-    dϕ .= -(CLinvCT\dϕ);
-
-    surface_divergence!(ϕ,dϕ,base_cache)
-    inverse_laplacian!(ϕ,base_cache)
-    ϕ .+= ftemp
-
-    # Find the streamfunction. This should be in some other routine, but it makes use of ftemp, so we need to find a solution for that.
-    dψ = zeros_surfacescalar(base_cache)
-    ψ = zeros_gridcurl(base_cache)
-    surface_curl!(stemp,dϕ,base_cache)
-    surface_grad_cross!(dψ,ftemp,base_cache)
-    dψ .= CLinvCT\dψ
-
-    surface_curl_cross!(ψ,dψ,base_cache)
-    ψ .-= stemp
-    ψ .*= -1.0
-
-    inverse_laplacian!(ψ,base_cache)
-
-    return ϕ, dϕ, ψ, dψ
-end
-
 function streamfunction!(ψ::Nodes{Dual},γ,ψb,dψb,constraintscache::CONT,sys::ILMSystem,t) where {CONT<:ConstraintsCache}
     println("solve non-shedding ψ system with constraints")
 
@@ -202,6 +168,49 @@ function streamfunction!(ψ::Nodes{Dual},γ,ψb,dψb,constraintscache::CONT,sys:
     return ψ
 end
 
+function streamfunction!(ψ::Nodes{Dual},dψ,dϕ,dvn,sys::ILMSystem,t)
+    @unpack extra_cache, base_cache, bc = sys
+    @unpack helmcache, constraintscache, CLinvCT, vtemp = extra_cache
+    @unpack ftemp, divv_temp = helmcache.dcache
+    @unpack stemp, curlv_temp = helmcache.wcache
+
+    regularize!(ftemp,dvn,base_cache)
+    inverse_laplacian!(ftemp,base_cache)
+
+    surface_curl!(stemp,dϕ,base_cache)
+    surface_grad_cross!(dψ,ftemp,base_cache)
+    dψ .= CLinvCT\dψ
+
+    surface_curl_cross!(ψ,dψ,base_cache)
+    ψ .-= stemp
+    ψ .*= -1.0
+
+    inverse_laplacian!(ψ,base_cache)
+
+    return ψ
+end
+
+function scalarpotential!(ϕ::Nodes{Primal},dϕ,vn,dvn,sys::ILMSystem,t)
+    @unpack extra_cache, base_cache, bc = sys
+    @unpack helmcache, constraintscache, CLinvCT, vtemp = extra_cache
+    @unpack ftemp, divv_temp = helmcache.dcache
+
+    # Find the potential
+    regularize!(ftemp,dvn,base_cache)
+    inverse_laplacian!(ftemp,base_cache)
+
+    surface_grad!(dϕ,ftemp,base_cache)
+    dϕ .= vn - dϕ
+    dϕ .= -(CLinvCT\dϕ);
+
+    surface_divergence!(ϕ,dϕ,base_cache)
+    inverse_laplacian!(ϕ,base_cache)
+    ϕ .+= ftemp
+
+    return ϕ, dϕ
+end
+
+
 function streamfunction(sys::ILMSystem,t)
     @unpack base_cache, extra_cache, forcing = sys
     @unpack helmcache, constraintscache, γtemp = extra_cache
@@ -241,9 +250,9 @@ function streamfunction(sys::ILMSystem)
 
     # get Dirichlet boundary conditions for ψ
     prescribed_surface_average!(dv,sys)
-    _ψbfromvb!(vn,dv,sys)
+    _ψbfromvb!(vn,dv,sys) # vn now holds ψb
     prescribed_surface_jump!(dv,sys)
-    _ψbfromvb!(dvn,dv,sys)
+    _ψbfromvb!(dvn,dv,sys) # dvn now holds dψb
 
     # subtract influence of free stream
     freestream_func = GridPotentialFlow.get_freestream_func(forcing)
@@ -312,6 +321,11 @@ function impulse(ϕ::Nodes{Primal},dϕ::ScalarData,sys,t)
     return P
 end
 
+"""
+    impulse(γ::ScalarData,sys,t)
+
+Computes the linear impulse of the exterior flow associated with the bound vortex sheet strength `γ`, calculated as ``P = \\int_{\\mathcal{S}_\\mathrm{b}} x \\times (n \\times v^{+}) \\mathrm{d}S = \\int_{\\mathcal{S}_\\mathrm{b}} x \\times (\\gamma + n \\times v_\\mathrm{b}) \\mathrm{d}S``, with ``\\gamma = n \\times (v^{+} - v^{-})``. Note that if ``n \\times v^{-} \\neq n \\times v_\\mathrm{b}``, this calculation will be incorrect.
+"""
 function impulse(γ::ScalarData,sys,t)
     @unpack bl, ds, nrm, sdata_cache, sscalar_cache = sys.base_cache
     @unpack dv = sys.extra_cache.helmcache.wcache
