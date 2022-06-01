@@ -30,10 +30,11 @@ function ConstraintsCache(RTLinvR,base_cache::BasicILMCache)
 
     # Fill up B₂₂ matrix. Not correct for shedding bodies
     for i in 1:length(bl)
-        B₂₂_vec[i][getrange(bl,i)] .= createB₂₂entry(bl[i],f₀_vec[i][getrange(bl,i)],base_cache)
+        B₂₂_vec[i][getrange(bl,i)] .= createB₂₂entry(bl[i],f₀_vec[i][getrange(bl,i)],base_cache.ds[getrange(bl,i)],base_cache)
     end
 
     # Precompute S matrix. Not correct for shedding bodies
+    # S = -C-B₂A⁻¹B₁ᵀ
     for i in 1:Nb, j in 1:Nb
         S[i,j] = -B₂₂_vec[i]'*f₀_vec[j]
     end
@@ -41,21 +42,47 @@ function ConstraintsCache(RTLinvR,base_cache::BasicILMCache)
     ConstraintsCache{typeof(ψ₀_vec),typeof(f₀_vec),typeof(B₂₂_vec),typeof(S)}(ψ₀_vec,f₀_vec,B₂₂_vec,S)
 end
 
-function createB₂₂entry(body::PotentialFlowBody{N,C,ST,0},f₀,base_cache) where {N,C,ST}
+function createB₂₂entry(body::PotentialFlowBody{N,C,ST,0},f₀,ds,base_cache) where {N,C,ST}
     B₂₂entry = ScalarData(N)
-    B₂₂entry .= 1.0
+    B₂₂entry .= ds
     return B₂₂entry
 end
 
-function createB₂₂entry(body::PotentialFlowBody{N,C,ST,1},f₀,base_cache) where {N,C,ST}
+function createB₂₂entry(body::PotentialFlowBody{N,C,ST,1},f₀,ds,base_cache) where {N,C<:RigidBodyTools.ClosedBody,ST}
     B₂₂entry = ScalarData(N)
-    B₂₂entry[body.edges[1]] = 1.0
-    B₂₂entry ./= f₀
+    if body.edges[1] == 1 || body.edges[1] == N+1 # for bodies where the midpoints are provided
+        B₂₂entry[1] = 0.5
+        B₂₂entry[end] = 0.5
+        # B₂₂entry[1] = 1.5*0.5
+        # B₂₂entry[2] = -0.5*0.5
+        # B₂₂entry[end] = 1.5*0.5
+        # B₂₂entry[end-1] = -0.5*0.5
+    else
+        B₂₂entry[body.edges[1]-1] = 0.5
+        B₂₂entry[body.edges[1]] = 0.5
+    end
+    # B₂₂entry ./= f₀
     return B₂₂entry
 end
 
-function createB₂₂entry(body::Body,f₀,base_cache)
-    return createB₂₂entry(PotentialFlowBody(body),f₀,base_cache)
+function createB₂₂entry(body::PotentialFlowBody{N,C,ST,1},f₀,ds,base_cache) where {N,C<:RigidBodyTools.OpenBody,ST}
+    B₂₂entry = ScalarData(N)
+    if body.edges[1] == 1
+        B₂₂entry[1] = 1.5
+        B₂₂entry[2] = -0.5
+    elseif body.edges[1] == N+1
+        B₂₂entry[end] = 1.5
+        B₂₂entry[end-1] = -0.5
+    else
+        B₂₂entry[body.edges[1]-1] = 0.5
+        B₂₂entry[body.edges[1]] = 0.5
+    end
+    # B₂₂entry ./= f₀
+    return B₂₂entry
+end
+
+function createB₂₂entry(body::Body,f₀,ds,base_cache)
+    return createB₂₂entry(PotentialFlowBody(body),f₀,ds,base_cache)
 end
 
 function constraint(body::PotentialFlowBody{N,C,ST,0}) where {N,C,ST}

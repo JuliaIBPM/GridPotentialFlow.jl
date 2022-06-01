@@ -118,8 +118,8 @@ function ImmersedLayers.prob_cache(prob::PotentialFlowProblem,base_cache::BasicI
     PotentialFlowcache(helmcache,vortcache,sinkcache,constraintscache,CLinvCT,RTLinvR,γtemp,dϕtemp,vtemp)
 end
 
-function streamfunction!(ψ::Nodes{Dual},γ,ψb,dψb,constraintscache::CONT,sys::ILMSystem,t) where {CONT<:ConstraintsCache}
-    println("solve non-shedding ψ system with constraints")
+function solve!(ψ::Nodes{Dual},γ,ψb,dψb,constraintscache::CONT,sys::ILMSystem,t) where {CONT<:ConstraintsCache}
+    println("solve non-shedding ψ system with extra constraints")
 
     @unpack extra_cache, base_cache, bc = sys
     @unpack helmcache, constraintscache, RTLinvR, vtemp = extra_cache
@@ -129,13 +129,12 @@ function streamfunction!(ψ::Nodes{Dual},γ,ψb,dψb,constraintscache::CONT,sys:
     Nb = length(base_cache.bl)
 
     # x⋆ = A⁻¹r₁
-    streamfunction!(ψ,γ,ψb,dψb,nothing,sys,t)
-    # S = -C-B₂A⁻¹B₁ᵀ
+    solve!(ψ,γ,ψb,dψb,nothing,sys,t)
+    # y = S⁻¹(r₂-B₂x⋆)
     rhs = zeros(Nb)
     for i in 1:Nb
         rhs[i] = constraint(base_cache.bl[i]) - B₂₂_vec[i]'*γ
     end
-    # y = S⁻¹(r₂-B₂x⋆)
     ψb₀ = S\rhs
     println(ψb₀)
 
@@ -144,8 +143,8 @@ function streamfunction!(ψ::Nodes{Dual},γ,ψb,dψb,constraintscache::CONT,sys:
     _subtractlincombo!(γ,ψb₀,f₀_vec)
 end
 
-function streamfunction!(ψ::Nodes{Dual},γ,ψb,dψb,constraintscache::CONT,sys::ILMSystem,t) where {CONT<:Nothing}
-    println("solve ψ system without constraints")
+function solve!(ψ::Nodes{Dual},γ,ψb,dψb,constraintscache::CONT,sys::ILMSystem,t) where {CONT<:Nothing}
+    println("solve ψ system without extra constraints")
 
     @unpack extra_cache, forcing, base_cache, phys_params = sys
     @unpack bl = base_cache
@@ -168,7 +167,7 @@ function streamfunction!(ψ::Nodes{Dual},γ,ψb,dψb,constraintscache::CONT,sys:
     return ψ
 end
 
-function streamfunction!(ψ::Nodes{Dual},dψ,dϕ,dvn,sys::ILMSystem,t)
+function solve!(ψ::Nodes{Dual},dψ,dϕ,dvn,sys::ILMSystem,t)
     @unpack extra_cache, base_cache, bc = sys
     @unpack helmcache, constraintscache, CLinvCT, vtemp = extra_cache
     @unpack ftemp, divv_temp = helmcache.dcache
@@ -190,7 +189,7 @@ function streamfunction!(ψ::Nodes{Dual},dψ,dϕ,dvn,sys::ILMSystem,t)
     return ψ
 end
 
-function scalarpotential!(ϕ::Nodes{Primal},dϕ,vn,dvn,sys::ILMSystem,t)
+function solve!(ϕ::Nodes{Primal},dϕ,vn,dvn,sys::ILMSystem,t)
     @unpack extra_cache, base_cache, bc = sys
     @unpack helmcache, constraintscache, CLinvCT, vtemp = extra_cache
     @unpack ftemp, divv_temp = helmcache.dcache
@@ -209,7 +208,6 @@ function scalarpotential!(ϕ::Nodes{Primal},dϕ,vn,dvn,sys::ILMSystem,t)
 
     return ϕ, dϕ
 end
-
 
 function streamfunction(sys::ILMSystem,t)
     @unpack base_cache, extra_cache, forcing = sys
@@ -231,7 +229,7 @@ function streamfunction(sys::ILMSystem,t)
     vn .-= Uinf .* pts.v .- Vinf .* pts.u
 
     # compute streamfunction
-    streamfunction!(ψ,γtemp,vn,dvn,constraintscache,sys,t)
+    solve!(ψ,γtemp,vn,dvn,constraintscache,sys,t)
 
     # add free stream streamfunction field
     vectorpotential_uniformvecfield!(stemp,Uinf,Vinf,base_cache)
@@ -260,7 +258,7 @@ function streamfunction(sys::ILMSystem)
     vn .-= Uinf .* pts.v .- Vinf .* pts.u
 
     # compute streamfunction
-    streamfunction!(ψ,γtemp,vn,dvn,constraintscache,sys,0.0)
+    solve!(ψ,γtemp,vn,dvn,constraintscache,sys,0.0)
 
     # add free stream streamfunction field
     vectorpotential_uniformvecfield!(stemp,Uinf,Vinf,base_cache)
@@ -290,7 +288,7 @@ function scalarpotential(sys::ILMSystem,t)
     vn .-= (Uinf .* nrm.u .+ Vinf .* nrm.v)
 
     # compute scalar potential
-    scalarpotential!(ϕ,dϕtemp,vn,dvn,sys,t)
+    solve!(ϕ,dϕtemp,vn,dvn,sys,t)
 
     # add free stream scalar potential field
     scalarpotential_uniformvecfield!(ftemp,Uinf,Vinf,base_cache)
