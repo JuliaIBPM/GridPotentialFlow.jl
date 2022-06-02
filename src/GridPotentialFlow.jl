@@ -23,8 +23,8 @@ include("vortexelements.jl")
 setup_problem(g;kwargs...) =
     PotentialFlowProblem(g;kwargs...)
 
-setup_problem(g,bl;bc=nothing,kwargs...) =
-    PotentialFlowProblem(g,bl;bc=get_bc_func(bc),kwargs...)
+setup_problem(g,bl;bc=nothing,motions=nothing,kwargs...) =
+    PotentialFlowProblem(g,bl;bc=get_bc_func(bc,motions),motions=motions,kwargs...)
 
 function default_freestream(t,phys_params)
     Vinfmag = get(phys_params,"freestream speed",0.0)
@@ -35,19 +35,33 @@ function default_freestream(t,phys_params)
 end
 
 function default_vbplus(base_cache,phys_params)
-  vnplus = zeros_surface(base_cache)
-  return vnplus
+  vbplus = zeros_surface(base_cache)
+  return vbplus
 end
 
 function default_vbminus(base_cache,phys_params)
-    vnminus = zeros_surface(base_cache)
-    return vnminus
+    vbminus = zeros_surface(base_cache)
+    return vbminus
+end
+
+function default_vbplus_motion(t,base_cache,phys_params,motions)
+  vbplus = zeros_surface(base_cache)
+  surface_velocity!(vbplus,base_cache,motions,t)
+  return vbplus
+end
+
+function default_vbminus_motion(t,base_cache,phys_params,motions)
+    vbminus = zeros_surface(base_cache)
+    surface_velocity!(vbminus,base_cache,motions,t)
+    return vbminus
 end
 
 const DEFAULT_DS_TO_DX_RATIO = 1.4
 const DEFAULT_FREESTREAM_FUNC = default_freestream
 const DEFAULT_VBPLUS_FUNC = default_vbplus
 const DEFAULT_VBMINUS_FUNC = default_vbminus
+const DEFAULT_VBPLUS_MOTION_FUNC = default_vbplus_motion
+const DEFAULT_VBMINUS_MOTION_FUNC = default_vbminus_motion
 
 #=
 Process keywords
@@ -65,14 +79,21 @@ end
 
 get_forcing_models(::Nothing) = get_forcing_models(Dict())
 
-function get_bc_func(bc_in::Dict)
+function get_bc_func(bc_in::Dict,motions::Nothing)
     bc = Dict()
     bc["exterior"] = haskey(bc_in,"exterior") ? bc_in["exterior"] : DEFAULT_VBPLUS_FUNC
     bc["interior"] = haskey(bc_in,"interior") ? bc_in["interior"] : DEFAULT_VBMINUS_FUNC
     return bc
 end
 
-get_bc_func(::Nothing) = get_bc_func(Dict())
+function get_bc_func(bc_in::Dict,motions)
+    bc = Dict()
+    bc["exterior"] = haskey(bc_in,"exterior") ? bc_in["exterior"] : DEFAULT_VBPLUS_MOTION_FUNC
+    bc["interior"] = haskey(bc_in,"interior") ? bc_in["interior"] : DEFAULT_VBMINUS_MOTION_FUNC
+    return bc
+end
+
+get_bc_func(::Nothing,motions) = get_bc_func(Dict(),motions)
 
 #=
 Defining the extra cache and extending prob_cache
