@@ -23,8 +23,8 @@ include("vortexelements.jl")
 setup_problem(g;kwargs...) =
     PotentialFlowProblem(g;kwargs...)
 
-setup_problem(g,bl;bc=nothing,motions=nothing,kwargs...) =
-    PotentialFlowProblem(g,bl;bc=get_bc_func(bc,motions),motions=motions,kwargs...)
+setup_problem(g,bl;bc=nothing,kwargs...) =
+    PotentialFlowProblem(g,bl;bc=get_bc_func(bc),kwargs...)
 
 function default_freestream(t,phys_params)
     Vinfmag = get(phys_params,"freestream speed",0.0)
@@ -34,25 +34,13 @@ function default_freestream(t,phys_params)
     return Uinf, Vinf
 end
 
-function default_vbplus(base_cache,phys_params)
+function default_vbplus(t,base_cache,phys_params,motions)
   vbplus = zeros_surface(base_cache)
   return vbplus
 end
 
-function default_vbminus(base_cache,phys_params)
+function default_vbminus(t,base_cache,phys_params,motions)
     vbminus = zeros_surface(base_cache)
-    return vbminus
-end
-
-function default_vbplus_motion(t,base_cache,phys_params,motions)
-  vbplus = zeros_surface(base_cache)
-  surface_velocity!(vbplus,base_cache,motions,t)
-  return vbplus
-end
-
-function default_vbminus_motion(t,base_cache,phys_params,motions)
-    vbminus = zeros_surface(base_cache)
-    surface_velocity!(vbminus,base_cache,motions,t)
     return vbminus
 end
 
@@ -60,8 +48,6 @@ const DEFAULT_DS_TO_DX_RATIO = 1.4
 const DEFAULT_FREESTREAM_FUNC = default_freestream
 const DEFAULT_VBPLUS_FUNC = default_vbplus
 const DEFAULT_VBMINUS_FUNC = default_vbminus
-const DEFAULT_VBPLUS_MOTION_FUNC = default_vbplus_motion
-const DEFAULT_VBMINUS_MOTION_FUNC = default_vbminus_motion
 
 #=
 Process keywords
@@ -79,21 +65,14 @@ end
 
 get_forcing_models(::Nothing) = get_forcing_models(Dict())
 
-function get_bc_func(bc_in::Dict,motions::Nothing)
+function get_bc_func(bc_in::Dict)
     bc = Dict()
     bc["exterior"] = haskey(bc_in,"exterior") ? bc_in["exterior"] : DEFAULT_VBPLUS_FUNC
     bc["interior"] = haskey(bc_in,"interior") ? bc_in["interior"] : DEFAULT_VBMINUS_FUNC
     return bc
 end
 
-function get_bc_func(bc_in::Dict,motions)
-    bc = Dict()
-    bc["exterior"] = haskey(bc_in,"exterior") ? bc_in["exterior"] : DEFAULT_VBPLUS_MOTION_FUNC
-    bc["interior"] = haskey(bc_in,"interior") ? bc_in["interior"] : DEFAULT_VBMINUS_MOTION_FUNC
-    return bc
-end
-
-get_bc_func(::Nothing,motions) = get_bc_func(Dict(),motions)
+get_bc_func(::Nothing) = get_bc_func(Dict())
 
 #=
 Defining the extra cache and extending prob_cache
@@ -101,7 +80,7 @@ Defining the extra cache and extending prob_cache
 
 @ilmproblem PotentialFlow vector
 
-struct PotentialFlowcache{HLMT,VORT,SNKT,CONT,PHIST,PSIST,FT,GT,VT} <: ImmersedLayers.AbstractExtraILMCache
+struct PotentialFlowcache{HLMT,VORT,SNKT,CONT,PHIST,PSIST,FT,GT,VT,VBT} <: ImmersedLayers.AbstractExtraILMCache
     # Cache for Helmholtz decomposition
     helmcache :: HLMT
     # Cache for vortex elements
@@ -120,6 +99,8 @@ struct PotentialFlowcache{HLMT,VORT,SNKT,CONT,PHIST,PSIST,FT,GT,VT} <: ImmersedL
     dϕtemp :: GT
     # Velocity
     vtemp :: VT
+    # Body velocity
+    vbtemp :: VBT
 end
 
 function ImmersedLayers.prob_cache(prob::PotentialFlowProblem,base_cache::BasicILMCache{N,scaling}) where {N,scaling}
@@ -133,10 +114,11 @@ function ImmersedLayers.prob_cache(prob::PotentialFlowProblem,base_cache::BasicI
     γtemp = zeros_surfacescalar(base_cache)
     dϕtemp = zeros_surfacescalar(base_cache)
     vtemp = zeros_grid(base_cache)
+    vbtemp = zeros_surface(base_cache)
 
     constraintscache = ConstraintsCache(RTLinvR,base_cache)
 
-    PotentialFlowcache(helmcache,vortcache,sinkcache,constraintscache,CLinvCT,RTLinvR,γtemp,dϕtemp,vtemp)
+    PotentialFlowcache(helmcache,vortcache,sinkcache,constraintscache,CLinvCT,RTLinvR,γtemp,dϕtemp,vtemp,vbtemp)
 end
 
 function solve!(ψ::Nodes{Dual},γ,ψb,dψb,constraintscache::CONT,sys::ILMSystem,t) where {CONT<:ConstraintsCache}
@@ -232,14 +214,16 @@ end
 
 function streamfunction(sys::ILMSystem,t)
     @unpack base_cache, extra_cache, forcing = sys
-    @unpack helmcache, constraintscache, γtemp = extra_cache
+    @unpack helmcache, constraintscache, γtemp, vbtemp = extra_cache
     @unpack dv, dvn, vn, stemp = helmcache.wcache
 
     ψ = zeros_gridcurl(sys)
     pts = points(sys)
 
     # get Dirichlet boundary conditions for ψ
+    surface_velocity!(vbtemp,sys,t)
     prescribed_surface_average!(dv,t,sys)
+    dv .+= vbtemp
     _ψbfromvb!(vn,dv,sys)
     prescribed_surface_jump!(dv,t,sys)
     _ψbfromvb!(dvn,dv,sys)
@@ -259,46 +243,21 @@ function streamfunction(sys::ILMSystem,t)
     return ψ
 end
 
-function streamfunction(sys::ILMSystem)
-    @unpack base_cache, extra_cache, forcing = sys
-    @unpack helmcache, constraintscache, γtemp = extra_cache
-    @unpack dv, dvn, vn, stemp = helmcache.wcache
-
-    ψ = zeros_gridcurl(sys)
-    pts = points(sys)
-
-    # get Dirichlet boundary conditions for ψ
-    prescribed_surface_average!(dv,sys)
-    _ψbfromvb!(vn,dv,sys) # vn now holds ψb
-    prescribed_surface_jump!(dv,sys)
-    _ψbfromvb!(dvn,dv,sys) # dvn now holds dψb
-
-    # subtract influence of free stream
-    freestream_func = GridPotentialFlow.get_freestream_func(forcing)
-    Uinf, Vinf = freestream_func(0.0,sys.phys_params)
-    vn .-= Uinf .* pts.v .- Vinf .* pts.u
-
-    # compute streamfunction
-    solve!(ψ,γtemp,vn,dvn,constraintscache,sys,0.0)
-
-    # add free stream streamfunction field
-    vectorpotential_uniformvecfield!(stemp,Uinf,Vinf,base_cache)
-    ψ .+= stemp
-
-    return ψ
-end
+streamfunction(sys::ILMSystem) = streamfunction(sys,0.0)
 
 function scalarpotential(sys::ILMSystem,t)
     @unpack base_cache, extra_cache, forcing = sys
     @unpack nrm = base_cache
-    @unpack helmcache, constraintscache, dϕtemp = extra_cache
+    @unpack helmcache, constraintscache, dϕtemp, vbtemp = extra_cache
     @unpack dv, dvn, vn, ftemp = helmcache.dcache
 
     ϕ = zeros_griddiv(sys)
     pts = points(sys)
 
     # get Neumann boundary conditions for ϕ
+    surface_velocity!(vbtemp,sys,t)
     prescribed_surface_average!(dv,t,sys)
+    dv .+= vbtemp
     vn .= (nrm.u .* dv.u .+ nrm.v .* dv.v)
     prescribed_surface_jump!(dv,t,sys)
     dvn .= (nrm.u .* dv.u .+ nrm.v .* dv.v)
@@ -316,9 +275,7 @@ function scalarpotential(sys::ILMSystem,t)
     ϕ .+= ftemp
 end
 
-function scalarpotential(sys::ILMSystem)
-
-end
+scalarpotential(sys::ILMSystem) = scalarpotential(sys,0.0)
 
 function impulse(ϕ::Nodes{Primal},dϕ::ScalarData,sys,t)
     @unpack ds, nrm = sys.base_cache
