@@ -25,40 +25,40 @@ using Test
 
     @testset "Circulation single open body" begin
         pfb = PotentialFlowBody(plate,Γ=1.0)
-        prob = setup_problem(g,pfb,scaling=GridScaling,phys_params=params)
+        prob = setup_problem(g,pfb,phys_params=params)
         sys = construct_system(prob)
-        ψ = streamfunction(sys)
-        Γ = integrate(sys.extra_cache.γtemp,sys.base_cache.ds)
+        γ = vortexsheetstrength(sys)
+        Γ = integrate(γ,sys.base_cache.ds)
         @test Γ ≈ 1.0
     end
 
     @testset "Circulation single closed body" begin
         pfb = PotentialFlowBody(circle,Γ=1.0)
-        prob = setup_problem(g,pfb,scaling=GridScaling,phys_params=params)
+        prob = setup_problem(g,pfb,phys_params=params)
         sys = construct_system(prob)
-        ψ = streamfunction(sys)
-        Γ = integrate(sys.extra_cache.γtemp,sys.base_cache.ds)
+        γ = vortexsheetstrength(sys)
+        Γ = integrate(γ,sys.base_cache.ds)
         @test Γ ≈ 1.0
     end
 
     @testset "Kutta condition single open body" begin
         pfb = PotentialFlowBody(plate,edges=[length(plate)+1])
-        prob = setup_problem(g,pfb,scaling=GridScaling,phys_params=params)
+        prob = setup_problem(g,pfb,phys_params=params)
         sys = construct_system(prob)
-        ψ = streamfunction(sys)
-        Γ = integrate(sys.extra_cache.γtemp,sys.base_cache.ds)
+        γ = vortexsheetstrength(sys)
+        Γ = integrate(γ,sys.base_cache.ds)
         @test isapprox(Γ,-π*U∞*sin(α),rtol=0.2)
-        @test isapprox(-0.5*sys.extra_cache.γtemp[end-1] + 1.5*sys.extra_cache.γtemp[end],0.0,atol=1e-9)
+        @test isapprox(-0.5*γ[end-1] + 1.5*γ[end],0.0,atol=1e-9)
     end
 
     @testset "Kutta condition single closed body" begin
         pfb = PotentialFlowBody(thickairfoil,edges=[length(thickairfoil)+1])
-        prob = setup_problem(g,pfb,scaling=GridScaling,phys_params=params)
+        prob = setup_problem(g,pfb,phys_params=params)
         sys = construct_system(prob)
-        ψ = streamfunction(sys)
-        Γ = integrate(sys.extra_cache.γtemp,sys.base_cache.ds)
+        γ = vortexsheetstrength(sys)
+        Γ = integrate(γ,sys.base_cache.ds)
         @test isapprox(Γ,-π*U∞*sin(α),rtol=0.2)
-        γTE = 0.5*sys.extra_cache.γtemp[1] + 0.5*sys.extra_cache.γtemp[end]
+        γTE = 0.5*γ[1] + 0.5*γ[end]
         @test isapprox(γTE,0.0,atol=1e-9)
     end
 
@@ -66,12 +66,12 @@ using Test
         pfb1 = PotentialFlowBody(circle,Γ=-1.0)
         pfb2 = PotentialFlowBody(plate,Γ=1.0)
         pfb3 = PotentialFlowBody(thickairfoil,Γ=2.0)
-        prob = setup_problem(g,BodyList([pfb1,pfb2,pfb3]),scaling=GridScaling,phys_params=params)
+        prob = setup_problem(g,BodyList([pfb1,pfb2,pfb3]),phys_params=params)
         sys = construct_system(prob)
-        ψ = streamfunction(sys)
-        Γ1 = integrate(sys.extra_cache.γtemp,sys.base_cache.ds,sys.base_cache.bl,1)
-        Γ2 = integrate(sys.extra_cache.γtemp,sys.base_cache.ds,sys.base_cache.bl,2)
-        Γ3 = integrate(sys.extra_cache.γtemp,sys.base_cache.ds,sys.base_cache.bl,3)
+        γ = vortexsheetstrength(sys)
+        Γ1 = integrate(γ,sys.base_cache.ds,sys.base_cache.bl,1)
+        Γ2 = integrate(γ,sys.base_cache.ds,sys.base_cache.bl,2)
+        Γ3 = integrate(γ,sys.base_cache.ds,sys.base_cache.bl,3)
         @test Γ1 ≈ -1.0
         @test Γ2 ≈ 1.0
         @test Γ3 ≈ 2.0
@@ -80,11 +80,11 @@ using Test
     @testset "Kutta condition multibody" begin
         pfb1 = PotentialFlowBody(plate,edges=[length(plate)+1])
         pfb2 = PotentialFlowBody(thickairfoil,edges=[length(thickairfoil)+1])
-        prob = setup_problem(g,BodyList([pfb1,pfb2]),scaling=GridScaling,phys_params=params)
+        prob = setup_problem(g,BodyList([pfb1,pfb2]),phys_params=params)
         sys = construct_system(prob)
-        ψ = streamfunction(sys)
-        γTE1 = -0.5*sys.extra_cache.γtemp[length(plate)-1] + 1.5*sys.extra_cache.γtemp[length(plate)]
-        γTE2 = 0.5*sys.extra_cache.γtemp[length(plate)+1] + 0.5*sys.extra_cache.γtemp[end]
+        γ = vortexsheetstrength(sys)
+        γTE1 = -0.5*γ[length(plate)-1] + 1.5*γ[length(plate)]
+        γTE2 = 0.5*γ[length(plate)+1] + 0.5*γ[end]
         @test isapprox(γTE1,0.0,atol=1e-9)
         @test isapprox(γTE2,0.0,atol=1e-9)
     end
@@ -93,13 +93,13 @@ using Test
         pfb1 = PotentialFlowBody(circle,Γ=-1.0)
         pfb2 = PotentialFlowBody(plate,edges=[length(plate)+1])
         pfb3 = PotentialFlowBody(thickairfoil,edges=[length(thickairfoil)+1])
-        prob = setup_problem(g,BodyList([pfb1,pfb2,pfb3]),scaling=GridScaling,phys_params=params)
+        prob = setup_problem(g,BodyList([pfb1,pfb2,pfb3]),phys_params=params)
         sys = construct_system(prob)
-        ψ = streamfunction(sys)
-        Γ1 = integrate(sys.extra_cache.γtemp,sys.base_cache.ds,sys.base_cache.bl,1)
+        γ = vortexsheetstrength(sys)
+        Γ1 = integrate(γ,sys.base_cache.ds,sys.base_cache.bl,1)
         @test Γ1 ≈ -1.0
-        γTE2 = -0.5*sys.extra_cache.γtemp[length(circle)+length(plate)-1] + 1.5*sys.extra_cache.γtemp[length(circle)+length(plate)]
-        γTE3 = 0.5*sys.extra_cache.γtemp[length(circle)+length(plate)+1] + 0.5*sys.extra_cache.γtemp[end]
+        γTE2 = -0.5*γ[length(circle)+length(plate)-1] + 1.5*γ[length(circle)+length(plate)]
+        γTE3 = 0.5*γ[length(circle)+length(plate)+1] + 0.5*γ[end]
         @test isapprox(γTE2,0.0,atol=1e-9)
         @test isapprox(γTE3,0.0,atol=1e-9)
     end

@@ -10,7 +10,7 @@ import MacroTools.@forward
 
 @reexport using ImmersedLayers
 
-export PotentialFlowProblem, setup_problem, streamfunction, scalarpotential, impulse
+export PotentialFlowProblem, setup_problem, streamfunction, vortexsheetstrength, scalarpotential, impulse, addedmass
 
 include("bodies.jl")
 include("constraints.jl")
@@ -212,12 +212,11 @@ function solve!(ϕ::Nodes{Primal},dϕ,vn,dvn,sys::ILMSystem,t)
     return ϕ, dϕ
 end
 
-function streamfunction(sys::ILMSystem,t)
+function solve!(ψ::Nodes{Dual},γ::ScalarData,sys,t)
     @unpack base_cache, extra_cache, forcing = sys
     @unpack helmcache, constraintscache, γtemp, vbtemp = extra_cache
     @unpack dv, dvn, vn, stemp = helmcache.wcache
 
-    ψ = zeros_gridcurl(sys)
     pts = points(sys)
 
     # get Dirichlet boundary conditions for ψ
@@ -234,24 +233,19 @@ function streamfunction(sys::ILMSystem,t)
     vn .-= Uinf .* pts.v .- Vinf .* pts.u
 
     # compute streamfunction
-    solve!(ψ,γtemp,vn,dvn,constraintscache,sys,t)
+    solve!(ψ,γ,vn,dvn,constraintscache,sys,t)
 
     # add free stream streamfunction field
     vectorpotential_uniformvecfield!(stemp,Uinf,Vinf,base_cache)
     ψ .+= stemp
-
-    return ψ
 end
 
-streamfunction(sys::ILMSystem) = streamfunction(sys,0.0)
-
-function scalarpotential(sys::ILMSystem,t)
+function solve!(ϕ::Nodes{Primal},dϕ::ScalarData,sys::ILMSystem,t)
     @unpack base_cache, extra_cache, forcing = sys
     @unpack nrm = base_cache
-    @unpack helmcache, constraintscache, dϕtemp, vbtemp = extra_cache
+    @unpack helmcache, constraintscache, vbtemp = extra_cache
     @unpack dv, dvn, vn, ftemp = helmcache.dcache
 
-    ϕ = zeros_griddiv(sys)
     pts = points(sys)
 
     # get Neumann boundary conditions for ϕ
@@ -268,11 +262,33 @@ function scalarpotential(sys::ILMSystem,t)
     vn .-= (Uinf .* nrm.u .+ Vinf .* nrm.v)
 
     # compute scalar potential
-    solve!(ϕ,dϕtemp,vn,dvn,sys,t)
+    solve!(ϕ,dϕ,vn,dvn,sys,t)
 
     # add free stream scalar potential field
     scalarpotential_uniformvecfield!(ftemp,Uinf,Vinf,base_cache)
     ϕ .+= ftemp
+end
+
+function streamfunction(sys::ILMSystem,t)
+    ψ = zeros_gridcurl(sys)
+    solve!(ψ,sys.extra_cache.γtemp,sys,t)
+    return ψ
+end
+
+streamfunction(sys::ILMSystem) = streamfunction(sys,0.0)
+
+function vortexsheetstrength(sys::ILMSystem,t)
+    γ = zeros_surfacescalar(sys)
+    solve!(sys.extra_cache.helmcache.wcache.stemp,γ,sys,t)
+    return γ
+end
+
+vortexsheetstrength(sys::ILMSystem) = vortexsheetstrength(sys,0.0)
+
+function scalarpotential(sys::ILMSystem,t)
+    ϕ = zeros_griddiv(sys)
+    solve!(ϕ,sys.extra_cache.dϕtemp,sys,t)
+    return ϕ
 end
 
 scalarpotential(sys::ILMSystem) = scalarpotential(sys,0.0)
@@ -304,21 +320,55 @@ Computes the linear impulse of the exterior flow associated with the bound vorte
 """
 function impulse(γ::ScalarData,sys,t)
     @unpack bl, ds, nrm, sdata_cache, sscalar_cache = sys.base_cache
-    @unpack dv = sys.extra_cache.helmcache.wcache
+    @unpack vbtemp = sys.extra_cache
 
-    surface_velocity!(dv,sys,t)
+    surface_velocity!(vbtemp,sys,t)
 
     P = [0.0,0.0]
     for i in 1:length(bl)
         r = getrange(bl,i)
-        P += _impulsesurfaceintegral(bl[i], γ[r], dv.u[r], dv.v[r], ds[r], nrm.u[r], nrm.v[r], sdata_cache.u[r], sdata_cache.v[r], sscalar_cache[r])
+        P += _impulsesurfaceintegral(bl[i], γ[r], vbtemp.u[r], vbtemp.v[r], ds[r], nrm.u[r], nrm.v[r], sdata_cache.u[r], sdata_cache.v[r], sscalar_cache[r])
     end
     return P
 end
 
-function impulse(sys,t)
+# function impulse(sys,t)
+#
+# end
 
+function addedmass(sys::ILMSystem,t)
+    @unpack g, bl, ds, nrm = sys.base_cache
+
+    newprob = setup_problem(g,bl,motions=MotionList([RigidBodyMotion(0.0,0.0) for b in 1:length(bl)]),phys_params=Dict())
+    newsys = construct_system(newprob)
+
+    @unpack sdata_cache, sscalar_cache = newsys.base_cache
+    @unpack vbtemp, γtemp, helmcache = newsys.extra_cache
+
+    # For now only translational
+    M = zeros(length(bl)*2,length(bl)*2)
+
+    for movingbodyindex in 1:length(bl)
+        for dir in 1:2
+            newsys.motions = MotionList([RigidBodyMotion(0.0,0.0) for b in 1:length(bl)])
+            if dir == 1
+                newsys.motions[movingbodyindex] = RigidBodyMotion(1.0,0.0)
+            else
+                newsys.motions[movingbodyindex] = RigidBodyMotion(1.0im,0.0)
+            end
+            surface_velocity!(vbtemp,newsys,t)
+            solve!(helmcache.wcache.stemp,γtemp,newsys,t)
+            for i in 1:length(bl)
+                r = getrange(bl,i)
+                M[(i-1)*2+1:(i-1)*2+2,(movingbodyindex-1)*2+dir] .= _impulsesurfaceintegral(bl[i], γtemp[r], vbtemp.u[r], vbtemp.v[r], ds[r], nrm.u[r], nrm.v[r], sdata_cache.u[r], sdata_cache.v[r], sscalar_cache[r])
+            end
+        end
+    end
+
+    return M
 end
+
+addedmass(sys::ILMSystem) = addedmass(sys,0.0)
 
 function _impulsesurfaceintegral(body::Body{N,RigidBodyTools.ClosedBody}, f, u, v, ds, nx, ny, xcrossncrossv_x_cache, xcrossncrossv_y_cache, ncrossv_cache) where {N}
     rx,ry = collect(body)
