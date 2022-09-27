@@ -1,4 +1,14 @@
-export Vortex
+export PointVortex
+
+struct VortexCache{RCT,ECT} <: ImmersedLayers.AbstractExtraILMCache
+    Rcurl :: RCT
+    Ecurl :: ECT
+end
+
+function VortexCache(base_cache::BasicILMCache)
+
+    # VortexCache(f₀,f̃temp,R̃curl)
+end
 
 """
 $(TYPEDEF)
@@ -9,7 +19,7 @@ Defines a point vortex with x-position `x`, y-position `y`, and strength `Γ`.
 
 $(TYPEDFIELDS)
 """
-mutable struct Vortex
+mutable struct PointVortex
     """x: x-coordinate of the vortex position."""
     x::Float64
     """y: y-coordinate of the vortex position."""
@@ -21,27 +31,9 @@ end
 """
 $(TYPEDSIGNATURES)
 
-Returns the strengths of all point vortices in the `StructArray` `vl` as `ScalarData`.
-"""
-function getstrengths(vl::StructArray{Vortex})
-    return ScalarData(vl.Γ)
-end
-
-"""
-$(TYPEDSIGNATURES)
-
-Returns the positions of all point vortices in the `StructArray` `vl` as `VectorData`.
-"""
-function getpositions(vl::StructArray{Vortex})
-    return VectorData(vl.x,vl.y)
-end
-
-"""
-$(TYPEDSIGNATURES)
-
 Sets the `x` and `y` fields of the point vortices in the `StructArray` `vl` to the entries of `xnew` and `ynew`, respectively.
 """
-function setpositions!(vl::StructArray{Vortex}, xnew, ynew)
+function setpositions!(vl::StructArray{PointVortex}, xnew, ynew)
     vl.x .= xnew
     vl.y .= ynew
 end
@@ -51,7 +43,7 @@ $(TYPEDSIGNATURES)
 
 Sets the `Γ` field of the point vortices in the `StructArray` `vl` to the entries of `Γnew`.
 """
-function setstrengths!(vl::StructArray{Vortex}, Γnew, idx=nothing)
+function setstrengths!(vl::StructArray{PointVortex}, Γnew, idx=nothing)
     if isnothing(idx)
         vl.Γ .= Γnew
     else

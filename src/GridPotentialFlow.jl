@@ -80,19 +80,23 @@ Defining the extra cache and extending prob_cache
 
 @ilmproblem PotentialFlow vector
 
-struct PotentialFlowcache{HLMT,VORT,SNKT,CONT,PHIST,PSIST,FT,GT,VT,VBT} <: ImmersedLayers.AbstractExtraILMCache
+struct PotentialFlowcache{HLMT,VORT,SNKT,CONT,PHIST,PSIST,PHISTF,PSISTF,FT,GT,VT,VBT} <: ImmersedLayers.AbstractExtraILMCache
     # Cache for Helmholtz decomposition
     helmcache :: HLMT
-    # Cache for vortex elements
-    vortcache :: VORT
-    # Cache for sink/source elements
-    sinkcache :: SNKT
-    # Cache for regularizing sharp edges
+    # Forcing cache for vortex elements
+    vortexcache :: VORT
+    # Forcing cache for source/sink elements
+    sourcecache :: SNKT
+    # Cache for constraints
     constraintscache :: CONT
     # CLinvCT
     CLinvCT :: PHIST
     # RTLinvR
     RTLinvR :: PSIST
+    # Factorized CLinvCT
+    CLinvCTfac :: PHISTF
+    # Factorized RTLinvR
+    RTLinvRfac :: PSISTF
     # Vortex sheet strength
     γtemp :: FT
     # Jump in scalar potential on the body
@@ -107,10 +111,12 @@ function ImmersedLayers.prob_cache(prob::PotentialFlowProblem,base_cache::BasicI
     @unpack bl = base_cache
 
     helmcache = VectorFieldCache(base_cache)
-    vortcache = nothing
-    sinkcache = nothing
+    vortexcache = nothing
+    sourcecache = nothing
     CLinvCT = create_CLinvCT_scalar(base_cache)
     RTLinvR = create_RTLinvR_scalar(base_cache)
+    CLinvCTfac = factorize(CLinvCT)
+    RTLinvRfac = factorize(RTLinvR)
     γtemp = zeros_surfacescalar(base_cache)
     dϕtemp = zeros_surfacescalar(base_cache)
     vtemp = zeros_grid(base_cache)
@@ -118,10 +124,10 @@ function ImmersedLayers.prob_cache(prob::PotentialFlowProblem,base_cache::BasicI
 
     constraintscache = ConstraintsCache(RTLinvR,base_cache)
 
-    PotentialFlowcache(helmcache,vortcache,sinkcache,constraintscache,CLinvCT,RTLinvR,γtemp,dϕtemp,vtemp,vbtemp)
+    PotentialFlowcache(helmcache,vortexcache,sourcecache,constraintscache,CLinvCT,RTLinvR,CLinvCTfac,RTLinvRfac,γtemp,dϕtemp,vtemp,vbtemp)
 end
 
-function solve!(ψ::Nodes{Dual},γ,ψb,dψb,constraintscache::CONT,sys::ILMSystem,t) where {CONT<:ConstraintsCache}
+function solve!(ψ::Nodes{Dual},γ,ψb,dψb,vortexelements,constraintscache::CONT,sys::ILMSystem,t) where {CONT<:ConstraintsCache}
     println("solve non-shedding ψ system with extra constraints")
 
     @unpack extra_cache, base_cache, bc = sys
@@ -132,7 +138,7 @@ function solve!(ψ::Nodes{Dual},γ,ψb,dψb,constraintscache::CONT,sys::ILMSyste
     Nb = length(base_cache.bl)
 
     # x⋆ = A⁻¹r₁
-    solve!(ψ,γ,ψb,dψb,nothing,sys,t)
+    solve!(ψ,γ,ψb,dψb,vortexelements,nothing,sys,t)
     # y = S⁻¹(r₂-B₂x⋆)
     rhs = zeros(Nb)
     for i in 1:Nb
@@ -146,22 +152,22 @@ function solve!(ψ::Nodes{Dual},γ,ψb,dψb,constraintscache::CONT,sys::ILMSyste
     _subtractlincombo!(γ,ψb₀,f₀_vec)
 end
 
-function solve!(ψ::Nodes{Dual},γ,ψb,dψb,constraintscache::CONT,sys::ILMSystem,t) where {CONT<:Nothing}
-    println("solve ψ system without extra constraints")
+function solve!(ψ::Nodes{Dual},γ,ψb,dψb,vortexelements,constraintscache::CONT,sys::ILMSystem,t) where {CONT<:Nothing}
+    # println("solve ψ system without extra constraints")
 
     @unpack extra_cache, forcing, base_cache, phys_params = sys
-    @unpack bl = base_cache
-    @unpack helmcache, RTLinvR, vtemp = extra_cache
+    @unpack bl, sscalar_cache = base_cache
+    @unpack helmcache, RTLinvRfac, vtemp, vortexcache = extra_cache
     @unpack stemp, curlv_temp = helmcache.wcache
 
     regularize_normal_cross!(vtemp,dψb,base_cache)
     curl!(curlv_temp,vtemp,base_cache)
-    # apply_forcing!(curlv_temp,ψ,t,fcache,phys_params)
+    # apply_forcing!(curlv_temp,vortexelements,t,vortexcache,phys_params)
     vectorpotential_from_curlv!(stemp,curlv_temp,base_cache)
 
-    interpolate!(γ,stemp,base_cache)
-    γ .= ψb .- γ
-    γ .= RTLinvR\γ # Should use ldiv!(γtemp,RTLinvR) for no allocation or even better implement CG so we don't have to construct RTLinvR.
+    interpolate!(sscalar_cache,stemp,base_cache) # Is it ok to use sscalar_cache here?
+    sscalar_cache .= ψb .- sscalar_cache
+    ldiv!(γ.data,RTLinvRfac,sscalar_cache.data) # Should implement CG so we don't have to construct RTLinvR.
 
     regularize!(curlv_temp,γ,base_cache)
     inverse_laplacian!(ψ,curlv_temp,base_cache)
@@ -177,6 +183,7 @@ function solve!(ψ::Nodes{Dual},dψ,dϕ,dvn,sys::ILMSystem,t)
     @unpack stemp, curlv_temp = helmcache.wcache
 
     regularize!(ftemp,dvn,base_cache)
+    apply_forcing!(ftemp,sourceelements,t,sourcecache,phys_params)
     inverse_laplacian!(ftemp,base_cache)
 
     surface_curl!(stemp,dϕ,base_cache)
@@ -192,7 +199,7 @@ function solve!(ψ::Nodes{Dual},dψ,dϕ,dvn,sys::ILMSystem,t)
     return ψ
 end
 
-function solve!(ϕ::Nodes{Primal},dϕ,vn,dvn,sys::ILMSystem,t)
+function solve!(ϕ::Nodes{Primal},dϕ,vn,dvn,sourcelements,sys::ILMSystem,t)
     @unpack extra_cache, base_cache, bc = sys
     @unpack helmcache, constraintscache, CLinvCT, vtemp = extra_cache
     @unpack ftemp, divv_temp = helmcache.dcache
@@ -212,7 +219,7 @@ function solve!(ϕ::Nodes{Primal},dϕ,vn,dvn,sys::ILMSystem,t)
     return ϕ, dϕ
 end
 
-function solve!(ψ::Nodes{Dual},γ::ScalarData,sys,t)
+function solve!(ψ::Nodes{Dual},γ::ScalarData,sys::ILMSystem,t)
     @unpack base_cache, extra_cache, forcing = sys
     @unpack helmcache, constraintscache, γtemp, vbtemp = extra_cache
     @unpack dv, dvn, vn, stemp = helmcache.wcache
@@ -233,7 +240,7 @@ function solve!(ψ::Nodes{Dual},γ::ScalarData,sys,t)
     vn .-= Uinf .* pts.v .- Vinf .* pts.u
 
     # compute streamfunction
-    solve!(ψ,γ,vn,dvn,constraintscache,sys,t)
+    solve!(ψ,γ,vn,dvn,nothing,constraintscache,sys,t)
 
     # add free stream streamfunction field
     vectorpotential_uniformvecfield!(stemp,Uinf,Vinf,base_cache)
@@ -262,7 +269,7 @@ function solve!(ϕ::Nodes{Primal},dϕ::ScalarData,sys::ILMSystem,t)
     vn .-= (Uinf .* nrm.u .+ Vinf .* nrm.v)
 
     # compute scalar potential
-    solve!(ϕ,dϕ,vn,dvn,sys,t)
+    solve!(ϕ,dϕ,vn,dvn,sourceelements,sys,t)
 
     # add free stream scalar potential field
     scalarpotential_uniformvecfield!(ftemp,Uinf,Vinf,base_cache)
