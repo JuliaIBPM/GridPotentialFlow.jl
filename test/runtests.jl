@@ -21,5 +21,6 @@ ENV["GKSwstype"] = "nul"
 #   end
 # end
 
+include("basicpotentialflow.jl")
 include("steadyconstrainedsystems.jl")
 include("addedmass.jl")

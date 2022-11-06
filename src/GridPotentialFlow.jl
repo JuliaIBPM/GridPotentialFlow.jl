@@ -183,7 +183,6 @@ function solve!(ψ::Nodes{Dual},dψ,dϕ,dvn,sys::ILMSystem,t)
     @unpack stemp, curlv_temp = helmcache.wcache
 
     regularize!(ftemp,dvn,base_cache)
-    apply_forcing!(ftemp,sourceelements,t,sourcecache,phys_params)
     inverse_laplacian!(ftemp,base_cache)
 
     surface_curl!(stemp,dϕ,base_cache)
@@ -206,6 +205,7 @@ function solve!(ϕ::Nodes{Primal},dϕ,vn,dvn,sourcelements,sys::ILMSystem,t)
 
     # Find the potential
     regularize!(ftemp,dvn,base_cache)
+    # apply_forcing!(ftemp,sourceelements,t,sourcecache,phys_params)
     inverse_laplacian!(ftemp,base_cache)
 
     surface_grad!(dϕ,ftemp,base_cache)
@@ -269,7 +269,7 @@ function solve!(ϕ::Nodes{Primal},dϕ::ScalarData,sys::ILMSystem,t)
     vn .-= (Uinf .* nrm.u .+ Vinf .* nrm.v)
 
     # compute scalar potential
-    solve!(ϕ,dϕ,vn,dvn,sourceelements,sys,t)
+    solve!(ϕ,dϕ,vn,dvn,nothing,sys,t)
 
     # add free stream scalar potential field
     scalarpotential_uniformvecfield!(ftemp,Uinf,Vinf,base_cache)
