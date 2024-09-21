@@ -2,7 +2,7 @@ name = "GridPotentialFlow"
 uuid = "1f0d46c9-1630-4f7c-9a63-ed825740f08c"
 authors = ["Jeff Eldredge <jdeldre@g.ucla.edu>", "Diederik Beckers <diederikbeckers@g.ucla.edu>"]
 repo = "https://github.com/JuliaIBPM/GridPotentialFlow.jl"
-version = "0.3.2"
+version = "0.4.0"
 
 [deps]
 DocStringExtensions = "ffbed154-4ef7-542d-bbb7-c09d3a79fcae"
