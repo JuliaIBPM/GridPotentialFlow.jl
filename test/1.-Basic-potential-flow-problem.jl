@@ -3,7 +3,7 @@ using GridPotentialFlow
 Lx = 2.0
 xlim = (-Lx/2,Lx/2)
 ylim = (-Lx/2,Lx/2)
-g = PhysicalGrid(xlim,ylim,Δx);
+g = PhysicalGrid(xlim,ylim,Δx,optimize=false);
 
 v = Vortex(0.0,0.0,1.0);
 
@@ -31,7 +31,7 @@ end
 nv = 4;
 vl = Vortex.(-Lx/4 .+ 0.4*Lx*(rand(nv).-0.5),-Lx/4 .+ 0.4*Lx*(rand(nv).-0.5),0.5*rand(nv).+0.5);
 
-grids = [PhysicalGrid(xlim,ylim,Lx/(nx-2)) for nx in [2^p for p in 5:9]];
+grids = [PhysicalGrid(xlim,ylim,Lx/(nx-2),optimize=false) for nx in [2^p for p in 5:9]];
 
 using LinearAlgebra: norm
 
@@ -110,7 +110,7 @@ end
 xlim = (-2,2);
 ylim = (-2,2);
 Δx = 0.05;
-g = PhysicalGrid(xlim,ylim,Δx);
+g = PhysicalGrid(xlim,ylim,Δx,optimize=false);
 
 function vortexpatch!(vort,xc,yc,Γ,radius,nring)
     Δr = radius/(nring-1/2)
@@ -148,4 +148,3 @@ gif(anims[1])
 gif(anims[2])
 
 # This file was generated using Literate.jl, https://github.com/fredrikekre/Literate.jl
-

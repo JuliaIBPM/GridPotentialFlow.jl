@@ -9,14 +9,14 @@ c = Lx/2 # chord length
 α = -π/3 # angle of attack
 plate = Plate(c,4*cellsize(g));
 Tr = RigidTransform((0.0,0.0),α)
-Tr(plate)
+update_body!(plate,Tr)
 Δs = dlengthmid(plate);
 
 σLE_list = [0.0,0.05,0.1];
 pfb_list = [PotentialFlowBody(plate,edges=[1,length(plate)],σ=[SuctionParameter(σLE),SuctionParameter(0.0)]) for σLE in σLE_list];
 
 Δt = 2e-2
-vLE = Vortex(plate.x[1]+3Δt*plate.len*cos(plate.α+π/2),plate.y[1]+3Δt*plate.len*sin(plate.α+π/2),0.0);
+vLE = Vortex(plate.x[1]+3Δt*c*cos(plate.α+π/2),plate.y[1]+3Δt*c*sin(plate.α+π/2),0.0);
 vTE = Vortex(plate.x[end]+3Δt*cos(α+π/2),plate.y[end]+3Δt*sin(α+π/2),0.0);
 
 function createsheddedvortices(plate,oldvortices)
@@ -58,4 +58,3 @@ end
 plot!()
 
 # This file was generated using Literate.jl, https://github.com/fredrikekre/Literate.jl
-

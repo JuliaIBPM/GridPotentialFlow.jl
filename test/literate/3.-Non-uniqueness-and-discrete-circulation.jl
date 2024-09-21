@@ -34,11 +34,11 @@ g = PhysicalGrid(xlim,ylim,Δx);
 # The two cylinders are positioned using the tools from `RigidTransform` from `RigidBodyTools.jl` and the circulation of the first one is set to a non-zero value.
 R = Lx/8;
 b_left = PotentialFlowBody(Circle(R,Δx),Γ=1.0)
-T = RigidTransform((-Lx/4,0.0),0.0)
-T(b_left);
+Xm1 = RigidTransform((-Lx/4,0.0),0.0)
+update_body!(b_left,Xm1);
 b_right = PotentialFlowBody(Circle(R,Δx))
-T = RigidTransform((Lx/4,0.0),0.0)
-T(b_right);
+Xm2 = RigidTransform((Lx/4,0.0),0.0)
+update_body!(b_right,Xm2);
 
 # A plot of the streamfunction then clearly shows the non-zero circulation about the left cylinder.
 model = VortexModel(g,bodies=[b_left,b_right])

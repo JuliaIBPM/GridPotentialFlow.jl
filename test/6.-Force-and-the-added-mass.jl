@@ -266,4 +266,3 @@ plot!(GRratios,nineRodArrayChen,label="Chen1975")
 plot!(GRratios,λoverMratios,label="GridPotentialFlow.jl")
 
 # This file was generated using Literate.jl, https://github.com/fredrikekre/Literate.jl
-

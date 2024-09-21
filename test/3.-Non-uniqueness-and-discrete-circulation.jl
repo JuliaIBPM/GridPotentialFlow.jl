@@ -8,11 +8,11 @@ g = PhysicalGrid(xlim,ylim,Δx);
 
 R = Lx/8;
 b_left = PotentialFlowBody(Circle(R,Δx),Γ=1.0)
-T = RigidTransform((-Lx/4,0.0),0.0)
-T(b_left);
+Xm1 = RigidTransform((-Lx/4,0.0),0.0)
+update_body!(b_left,Xm1);
 b_right = PotentialFlowBody(Circle(R,Δx))
-T = RigidTransform((Lx/4,0.0),0.0)
-T(b_right);
+Xm2 = RigidTransform((Lx/4,0.0),0.0)
+update_body!(b_right,Xm2);
 
 model = VortexModel(g,bodies=[b_left,b_right])
 s = streamfunction(model)
@@ -59,4 +59,3 @@ end
 plot!((1:length(f₀_list[end]))/length(f₀_list[end]),0.5*f₀_list[end]./Δs_plate,linecolor=colors[end],label="AR=inf")
 
 # This file was generated using Literate.jl, https://github.com/fredrikekre/Literate.jl
-

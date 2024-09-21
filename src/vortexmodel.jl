@@ -307,7 +307,7 @@ $(SIGNATURES)
 
 Solves the saddle point system associated with the vortex model `vm` and stores the solution in `sol`. If the vortex model contains bodies with regularized edges and a number of vortices which is greater than or equal to the number of regularized edges, the returned solution contains the computed strengths of the last N vortices in `vm`, with N the number of regularized edges.
 """
-function solve!(sol::PoissonSolution, vm::VortexModel{0,0,TS,TU}) where {Nb,TU,TS<:Laplacian}
+function solve!(sol::PoissonSolution, vm::VortexModel{0,0,TS,TU}) where {TU,TS<:Laplacian}
 
     vorticity!(vm._w, vm)
     rhs = PoissonRHS(vm._w)
@@ -384,7 +384,7 @@ $(SIGNATURES)
 
 Solves the saddle point system associated with the vortex model `vm` and returns the solution. If the vortex model contains bodies with regularized edges and a number of vortices which is greater than or equal to the number of regularized edges, the returned solution contains the computed strengths of the last N vortices in `vm`, with N the number of regularized edges.
 """
-function solve(vm::VortexModel{0,0,TS,TU}) where {Nb,Ne,TS<:Laplacian,TU}
+function solve(vm::VortexModel{0,0,TS,TU}) where {TS<:Laplacian,TU}
 
     sol = PoissonSolution(TU())
     solve!(sol, vm)
@@ -405,7 +405,7 @@ $(SIGNATURES)
 
 Computes the stream function field `ψ` on the physical grid for the potential flow associated with the current state of the vortex model `vm`.
 """
-function streamfunction!(ψ::TU, vm::VortexModel{0,0,TS,TU}) where {Nb,Ne,TS<:Laplacian,TU}
+function streamfunction!(ψ::TU, vm::VortexModel{0,0,TS,TU}) where {TS<:Laplacian,TU}
 
     sol = PoissonSolution(ψ)
     solve!(sol, vm)
