@@ -1,5 +1,5 @@
 import Base: show, length, collect
-import RigidBodyTools: RigidTransform
+import ImmersedLayers: RigidTransform
 
 export PotentialFlowBody, subtractcirculation!, getU, getΩ, getΓ, setU, setΩ, setΓ
 

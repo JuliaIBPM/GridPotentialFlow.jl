@@ -1,4 +1,4 @@
-import CartesianGrids: curl!, Laplacian
+import ImmersedLayers: curl!, Laplacian
 import LinearAlgebra: Diagonal, norm
 import Base: show
 
