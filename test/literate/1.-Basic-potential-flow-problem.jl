@@ -24,7 +24,7 @@ using GridPotentialFlow
 Lx = 2.0
 xlim = (-Lx/2,Lx/2)
 ylim = (-Lx/2,Lx/2)
-g = PhysicalGrid(xlim,ylim,Δx);
+g = PhysicalGrid(xlim,ylim,Δx,optimize=false);
 
 # The second step is to create our point vortex using `Vortex`.
 v = Vortex(0.0,0.0,1.0);
@@ -64,7 +64,7 @@ nv = 4;
 vl = Vortex.(-Lx/4 .+ 0.4*Lx*(rand(nv).-0.5),-Lx/4 .+ 0.4*Lx*(rand(nv).-0.5),0.5*rand(nv).+0.5);
 
 # Next, we create a series of grids, with each grid doubling the number of grid points of the previous grid in each direction.
-grids = [PhysicalGrid(xlim,ylim,Lx/(nx-2)) for nx in [2^p for p in 5:9]];
+grids = [PhysicalGrid(xlim,ylim,Lx/(nx-2),optimize=false) for nx in [2^p for p in 5:9]];
 
 # The error is calculated as $\epsilon = \Vert \psi(\mathsf{x},\mathsf{y})/\Delta x - \mathsf{s} \Vert_2 / \Vert \mathsf{s} \Vert_2$, for which we use the `norm` function.
 using LinearAlgebra: norm
@@ -165,12 +165,12 @@ A more complex example is the evolution of two circular regions of spatially uni
 #md # xlim = (-2,2);
 #md # ylim = (-2,2);
 #md # Δx = 0.05;
-#md # g = PhysicalGrid(xlim,ylim,Δx);
+#md # g = PhysicalGrid(xlim,ylim,Δx,optimize=false);
 #md # ```
 #!md xlim = (-2,2);
 #!md ylim = (-2,2);
 #!md Δx = 0.05;
-#!md g = PhysicalGrid(xlim,ylim,Δx);
+#!md g = PhysicalGrid(xlim,ylim,Δx,optimize=false);
 
 # We discretize the vortex patches with point vortices arranged on concentric rings using the following function.
 

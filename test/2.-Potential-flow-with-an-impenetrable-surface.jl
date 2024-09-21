@@ -94,4 +94,3 @@ plot(sol.f./Δs,label="f/ds",xlabel="body point index")
 plot!(γ,label="gamma")
 
 # This file was generated using Literate.jl, https://github.com/fredrikekre/Literate.jl
-

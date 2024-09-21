@@ -138,7 +138,7 @@ dsdx = 2
 plate = RigidBodyTools.Plate(c,dsdx*Δx)
 pfb = PotentialFlowBody(plate,edges=[1,length(plate)],σ=[SuctionParameter(σLE),SuctionParameter(σTE)])
 transform = RigidTransform((0.0,0.0),-π/3)
-transform(plate);
+update_body!(plate,transform);
 Δs = dlength(plate)
 maximum(Δs/Δx);
 
@@ -243,13 +243,16 @@ using LinearAlgebra: eigen
 
 λoverMratios = zeros(length(GRratios))
 for idx in 1:length(GRratios)
-    global bodies
+    #global bodies
     gap = GRratios[idx]*R
     spacing = 2*R+gap
     bodycenters = rectangulararray(rows,columns,spacing)
     for i in 1:N
         Tf = RigidTransform((bodycenters.u[i],bodycenters.v[i]),0.0)
-        global bodies[i] = Tf(deepcopy(bodies[i]))
+        tmp_body = bodies[i]
+        #global bodies[i] = Tf(deepcopy(bodies[i]))
+        update_body!(tmp_body,Tf)
+        bodies[i] = deepcopy(tmp_body)
     end
     body_list = PotentialFlowBody.(bodies)
     vm = VortexModel(g,bodies=body_list);
@@ -266,4 +269,3 @@ plot!(GRratios,nineRodArrayChen,label="Chen1975")
 plot!(GRratios,λoverMratios,label="GridPotentialFlow.jl")
 
 # This file was generated using Literate.jl, https://github.com/fredrikekre/Literate.jl
-

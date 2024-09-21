@@ -31,7 +31,7 @@ c = Lx/2 # chord length
 α = -π/3 # angle of attack
 plate = Plate(c,4*cellsize(g));
 Tr = RigidTransform((0.0,0.0),α)
-Tr(plate)
+update_body!(plate,Tr)
 Δs = dlengthmid(plate);
 
 # We create three instances of `PotentialFlowBody`, each one with a different suction parameter range. We only vary the suction parameter at the leading edge and keep it at zero (Kutta condition) at the trailing edge.
@@ -40,7 +40,7 @@ pfb_list = [PotentialFlowBody(plate,edges=[1,length(plate)],σ=[SuctionParameter
 
 # The initial point vortices are the same in each case.
 Δt = 2e-2
-vLE = Vortex(plate.x[1]+3Δt*plate.len*cos(plate.α+π/2),plate.y[1]+3Δt*plate.len*sin(plate.α+π/2),0.0);
+vLE = Vortex(plate.x[1]+3Δt*c*cos(plate.α+π/2),plate.y[1]+3Δt*c*sin(plate.α+π/2),0.0);
 vTE = Vortex(plate.x[end]+3Δt*cos(α+π/2),plate.y[end]+3Δt*sin(α+π/2),0.0);
 
 # At each time step, we will need to insert new point vortices near the regularized edges to simulate the vortex shedding. A good strategy is to place them one-third of the way from the edge to the last released vortex from that edge. This will happen at each time step, so we create a function for it.

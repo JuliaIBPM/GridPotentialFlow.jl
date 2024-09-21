@@ -1,5 +1,5 @@
 import Base: show, length, collect
-import RigidBodyTools: RigidTransform
+import ImmersedLayers: RigidTransform
 
 export PotentialFlowBody, subtractcirculation!, getU, getΩ, getΓ, setU, setΩ, setΓ
 
@@ -183,6 +183,8 @@ function (T::RigidBodyTools.RigidTransform)(b::PotentialFlowBody)
     return b
 end
 
+RigidBodyTools.update_body!(b::PotentialFlowBody,a...) = update_body!(b.points,a...)
+
 @inline RigidBodyTools.dlength(b::PotentialFlowBody) = dlength(b.points)
 
 @inline RigidBodyTools.dlengthmid(b::PotentialFlowBody) = dlengthmid(b.points)
@@ -233,5 +235,7 @@ function Base.show(io::IO, b::PotentialFlowBody)
         end
     end
 end
+
+platelen(plate::Polygon{N,2,BT}) where {N,BT} = RigidBodyTools.polygon_perimeter(plate.x̃end,plate.ỹend,BT)
 
 @recipe f(::Type{PotentialFlowBody}, pfb::PotentialFlowBody) = pfb.points

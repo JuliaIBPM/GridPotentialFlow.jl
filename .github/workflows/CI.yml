@@ -16,7 +16,7 @@ jobs:
         group:
           - Scripts
         version:
-          - '1.4'
+          - '1.8'
           - 'nightly'
         os:
           - ubuntu-latest
@@ -48,7 +48,7 @@ jobs:
       - uses: actions/checkout@v2
       - uses: julia-actions/setup-julia@latest
         with:
-          version: '1.4'
+          version: '1.10'
       - name: Install dependencies
         run: julia --project=docs/ -e 'using Pkg; Pkg.develop(PackageSpec(path=pwd())); Pkg.instantiate()'
       - name: Build and deploy

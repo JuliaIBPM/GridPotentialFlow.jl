@@ -22,7 +22,7 @@ c = Lx/2 # chord length
 α = -π/6 # angle of attack
 plate = Plate(c,4*cellsize(g))
 Tr = RigidTransform((0.0,0.0),α)
-Tr(plate)
+update_body!(plate,Tr)
 pfb = PotentialFlowBody(plate);
 model = VortexModel(g,bodies=[pfb]);
 
@@ -166,7 +166,7 @@ $\begin{bmatrix}
 # We now simulate this case again for our flat plate problem. This solution corresponds to the flow right after impulsively starting a uniform flow around a flat plate, but unlike the previous case, the flow now also separates at the leading edge.
 
 # We create two vortices, one near the leading edge and one near the trailing edge.
-vLE = Vortex(plate.x[1]+3*Δt*plate.len*cos(plate.α+π/2),plate.y[1]+3*Δt*plate.len*sin(plate.α+π/2),0.0);
+vLE = Vortex(plate.x[1]+3*Δt*c*cos(plate.α+π/2),plate.y[1]+3*Δt*c*sin(plate.α+π/2),0.0);
 vTE = Vortex(plate.x[end]+3*Δt*cos(α+π/2),plate.y[end]+3*Δt*sin(α+π/2),0.0);
 
 # The model now has two regularized edges, corresponding to the first body point and the last one.

@@ -229,7 +229,7 @@ function ldiv!(sol::TS, sys::IBPoisson{TU,TF}, rhs::TR; zerow=false, zeroψb=fal
     return sol
 end
 
-function ldiv!(sol::ConstrainedIBPoissonSolution{TU,TF}, sys::ConstrainedIBPoisson{Nb,TU,TF}, rhs::ConstrainedIBPoissonRHS) where {Nb,TU,TF,TS}
+function ldiv!(sol::ConstrainedIBPoissonSolution{TU,TF}, sys::ConstrainedIBPoisson{Nb,TU,TF}, rhs::ConstrainedIBPoissonRHS) where {Nb,TU,TF}
 
     # fstar = S⁻¹(ψb+EL⁻¹w)
     ldiv!(sol, sys.ibp, rhs, onlyf=true)
