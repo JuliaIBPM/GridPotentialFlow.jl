@@ -6,7 +6,6 @@ version = "0.3.2"
 
 [deps]
 CartesianGrids = "3e975e5d-2cf8-4263-9573-8460aaf534d9"
-DocStringExtensions = "ffbed154-4ef7-542d-bbb7-c09d3a79fcae"
 ImmersedLayers = "cdc13194-334e-4e1c-bc8d-fc3a28509c85"
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
 LinearMaps = "7a12625a-238d-50fd-b39a-03d52299707e"
@@ -18,7 +17,6 @@ UnPack = "3a884ed6-31ef-47d7-9d2a-63182c4928ed"
 
 [compat]
 CartesianGrids = "0.1.13"
-DocStringExtensions = "0.8.4, 0.9"
 ImmersedLayers = "0.5"
 LinearMaps = "3"
 RecipesBase = "1.1"
