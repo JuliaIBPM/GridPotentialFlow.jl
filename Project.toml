@@ -18,6 +18,7 @@ UnPack = "3a884ed6-31ef-47d7-9d2a-63182c4928ed"
 DocStringExtensions = "0.9"
 ImmersedLayers = "0.5"
 LinearMaps = "3"
+OrdinaryDiffEq = "6.50 - 6.87"
 RecipesBase = "1.1"
 Reexport = "0.2.0, 1.0"
 StructArrays = "0.5, 0.6"
@@ -34,4 +35,4 @@ Statistics = "10745b16-79ce-11e8-11f9-7d13ad32a3b2"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [targets]
-test = ["Test", "OrdinaryDiffEq", "Random", "Plots", "Literate", "PotentialFlow", "Statistics"]
+test = ["Test", "OrdinaryDiffEq", "Random", "Plots", "PotentialFlow", "Literate", "Statistics"]
