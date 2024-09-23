@@ -16,7 +16,7 @@ UnPack = "3a884ed6-31ef-47d7-9d2a-63182c4928ed"
 
 [compat]
 DocStringExtensions = "0.9"
-ImmersedLayers = "0.5"
+ImmersedLayers = "0.5.1"
 LinearMaps = "3"
 RecipesBase = "1.1"
 Reexport = "0.2.0, 1.0"
