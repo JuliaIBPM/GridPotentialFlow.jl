@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>6. Force and the added mass · GridPotentialFlow.jl</title><meta name="title" content="6. Force and the added mass · GridPotentialFlow.jl"/><meta property="og:title" content="6. Force and the added mass · GridPotentialFlow.jl"/><meta property="twitter:title" content="6. Force and the added mass · GridPotentialFlow.jl"/><meta name="description" content="Documentation for GridPotentialFlow.jl."/><meta property="og:description" content="Documentation for GridPotentialFlow.jl."/><meta property="twitter:description" content="Documentation for GridPotentialFlow.jl."/><script data-outdated-warner src="../../assets/warner.js"></script><link href="https://cdnjs.cloudflare.com/ajax/libs/lato-font/3.0.0/css/lato-font.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/juliamono/0.050/juliamono.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.8/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL="../.."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="../../assets/documenter.js"></script><script src="../../search_index.js"></script><script src="../../siteinfo.js"></script><script src="../../../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-mocha.css" data-theme-name="catppuccin-mocha"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-macchiato.css" data-theme-name="catppuccin-macchiato"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-frappe.css" data-theme-name="catppuccin-frappe"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-latte.css" data-theme-name="catppuccin-latte"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/documenter-dark.css" data-theme-name="documenter-dark" data-theme-primary-dark/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="../../assets/themeswap.js"></script></head><body><div id="documenter"><nav class="docs-sidebar"><div class="docs-package-name"><span class="docs-autofit"><a href="../../">GridPotentialFlow.jl</a></span></div><button class="docs-search-query input is-rounded is-small is-clickable my-2 mx-auto py-1 px-2" id="documenter-search-query">Search docs (Ctrl + /)</button><ul class="docs-menu"><li><a class="tocitem" href="../../">Home</a></li><li><span class="tocitem">Manual</span><ul><li><a class="tocitem" href="../1.-Basic-potential-flow-problem/">1. Basic potential flow problem</a></li><li><a class="tocitem" href="../2.-Potential-flow-with-an-impenetrable-surface/">2. Potential flow with an impenetrable surface</a></li><li><a class="tocitem" href="../3.-Non-uniqueness-and-discrete-circulation/">3. Non-uniqueness and discrete circulation</a></li><li><a class="tocitem" href="../4.-The-Kutta-condition/">4. The Kutta condition</a></li><li><a class="tocitem" href="../5.-Generalized-edge-conditions/">5. Generalized edge conditions</a></li><li class="is-active"><a class="tocitem" href>6. Force and the added mass</a><ul class="internal"><li><a class="tocitem" href="#Force"><span>Force</span></a></li><li><a class="tocitem" href="#Added-mass"><span>Added mass</span></a></li></ul></li></ul></li><li><span class="tocitem">Library</span><ul><li><a class="tocitem" href="../../public/">Public Documentation</a></li><li><a class="tocitem" href="../../private/">Private Documentation</a></li></ul></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><a class="docs-sidebar-button docs-navbar-link fa-solid fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a><nav class="breadcrumb"><ul class="is-hidden-mobile"><li><a class="is-disabled">Manual</a></li><li class="is-active"><a href>6. Force and the added mass</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href>6. Force and the added mass</a></li></ul></nav><div class="docs-right"><a class="docs-navbar-link" href="https://github.com/JuliaIBPM/GridPotentialFlow.jl" title="View the repository on GitHub"><span class="docs-icon fa-brands"></span><span class="docs-label is-hidden-touch">GitHub</span></a><a class="docs-navbar-link" href="https://github.com/JuliaIBPM/GridPotentialFlow.jl/blob/master/test/literate/6.-Force-and-the-added-mass.jl" title="Edit source on GitHub"><span class="docs-icon fa-solid"></span></a><a class="docs-settings-button docs-navbar-link fa-solid fa-gear" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-article-toggle-button fa-solid fa-chevron-up" id="documenter-article-toggle-button" href="javascript:;" title="Collapse all docstrings"></a></div></header><article class="content" id="documenter-page"><h1 id="6.-Force-and-the-added-mass"><a class="docs-heading-anchor" href="#6.-Force-and-the-added-mass">6. Force and the added mass</a><a id="6.-Force-and-the-added-mass-1"></a><a class="docs-heading-anchor-permalink" href="#6.-Force-and-the-added-mass" title="Permalink"></a></h1><h2 id="Force"><a class="docs-heading-anchor" href="#Force">Force</a><a id="Force-1"></a><a class="docs-heading-anchor-permalink" href="#Force" title="Permalink"></a></h2><p>This part introduces the calculation of the force and moment on the body through the negative rate of change of impulse in the fluid. The continuous expressions for linear and angular impulse (about the origin) are, in two dimensions,</p><p class="math-container">\[\begin{align}
+    \boldsymbol{P} &amp;= \int_{V_f} \boldsymbol{x}\times \boldsymbol{\omega}\,\mathrm{d}V + \int_{S_b} \boldsymbol{x}\times \left( \boldsymbol{n}\times\boldsymbol{v}\right)\,\mathrm{d}S \\
+    \boldsymbol{\Pi}_0 &amp;= \frac{1}{2}\int_{V_f} \boldsymbol{x}\times \left(\boldsymbol{x}\times\boldsymbol{\omega}\right)\,\mathrm{d}V + \frac{1}{2} \int_{S_b} \boldsymbol{x}\times \left[ \boldsymbol{x}\times\left( \boldsymbol{n} \times \boldsymbol{v} \right) \right] \,\mathrm{d}S
+\end{align}\]</p><p>If there is only a single body, then the force and moment (about the origin) exerted by the fluid on that body are given by</p><p class="math-container">\[\boldsymbol{F} = -\rho \frac{\mathrm{d}\boldsymbol{P}}{\mathrm{d}t}, \qquad \boldsymbol{M}_{0} = -\rho \frac{\mathrm{d}\boldsymbol{\Pi}_{0}}{\mathrm{d}t},\]</p><p>where <span>$\rho$</span> is the fluid density. In the two-dimensional applications of this package, angular impulse and the moment have only a single component, e.g., <span>$\boldsymbol{\Pi}_0 =\Pi_0\boldsymbol{e}_z$</span>, where <span>$\boldsymbol{e}_z$</span> is the unit vector out of the plane.</p><h4 id="Point-vortices-past-a-cylinder"><a class="docs-heading-anchor" href="#Point-vortices-past-a-cylinder">Point vortices past a cylinder</a><a id="Point-vortices-past-a-cylinder-1"></a><a class="docs-heading-anchor-permalink" href="#Point-vortices-past-a-cylinder" title="Permalink"></a></h4><p>To verify our method of calculating the impulse, we create a model of two point vortices of equal and opposite circulation positioned at both sides of the <span>$x$</span>-axis, with the <span>$x$</span>-axis as axis of symmetry, and left of a circular cylinder positioned at the origin. If the top vortex has a positive circulation, the vortices propel each other towards the cylinder and convect past it. This configuration has an analytical solution for the trajecory and impulse.</p><p>See the notebook in the examples folder for the analytical solution.</p><p>We use a rectangular grid.</p><pre><code class="language-julia hljs">Lx = 10.0
+Ly = 4.0
+xlim = (-Lx/2,Lx/2)
+ylim = (-Ly/2,Ly/2)
+g = PhysicalGrid(xlim, ylim, 0.04)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">PhysicalGrid{2}((256, 104), (128, 52), 0.04, ((-5.08, 5.08), (-2.04, 2.04)), 4)</code></pre><pre><code class="language-julia hljs">Rc = 1
+circle = Circle(Rc,2*cellsize(g))
+pfb = PotentialFlowBody(circle)
+
+Δs = dlength(circle);</code></pre><p>The initial spacing between the vortices is <code>y∞</code>. After the vortices pass the cylinder, they should return to this spacing.</p><pre><code class="language-julia hljs">y∞ = Rc/2
+v1 = Vortex(-Lx/2+10*cellsize(g),y∞,1.0);
+v2 = Vortex(-Lx/2+10*cellsize(g),-y∞,-1.0);</code></pre><p>We create the vortex model with these two point vortices and the circle and advance the position of the point vortices over some time. We use <code>OrdinaryDiffEq.RK4()</code> for the time stepping and we compute the impulse history with <code>impulse</code> in a post-processing step.</p><pre><code class="language-julia hljs">model = VortexModel(g,bodies=[pfb],vortices=[v1,v2]);
+
+function rhs(X,model,t)
+    setvortexpositions!(model,X)
+    Ẋ = vortexvelocities!(model)
+    return Ẋ
+end
+
+import OrdinaryDiffEq
+X = getvortexpositions(model)
+prob = OrdinaryDiffEq.ODEProblem(rhs,X,(0.0,64.0),model);
+sol = OrdinaryDiffEq.solve(prob,dt=0.1,OrdinaryDiffEq.RK4(),dense=false,adaptive=false);</code></pre><p>Using the history of the vortex positions in <code>sol.u</code>, we can calculate the impulse history.</p><pre><code class="language-julia hljs">Px_numerical_hist = []
+Py_numerical_hist = []
+for u in sol.u
+    setvortexpositions!(model,u)
+    Px, Py = impulse(model)
+    push!(Px_numerical_hist,Px)
+    push!(Py_numerical_hist,Py)
+end</code></pre><p>When we compare the trajectories and impulse history, the numerical and analytical solution should match closely, which is indeed the case.</p><pre><code class="language-julia hljs">plot(circle,fillcolor=:black,fillrange=0,fillalpha=0.25,linecolor=:black,linewidth=2,xlabel=&quot;x&quot;,ylabel=&quot;y&quot;)
+scatter!(model.vortices.x,model.vortices.y,color=:red)
+plot!(x_trajectory,y_trajectory_upper,linecolor=:red,label=&quot;exact&quot;)
+plot!(x_trajectory,y_trajectory_lower,linecolor=:red,label=&quot;&quot;)
+plot!(map(s-&gt;s.u[1],sol.u),map(s-&gt;s.v[1],sol.u),color=:blue,linestyle=:dash,label=&quot;simulated&quot;)
+plot!(map(s-&gt;s.u[2],sol.u),map(s-&gt;s.v[2],sol.u),color=:blue,linestyle=:dash,label=&quot;&quot;)</code></pre><img src="beaa2ded.svg" alt="Example block output"/><pre><code class="language-julia hljs">plot(x_trajectory,Px_exact,color=:red,label=&quot;exact&quot;,xlabel=&quot;x&quot;,ylabel=&quot;Px&quot;)
+plot!(map(s-&gt;s.u[1],sol.u),Px_numerical_hist,color=:blue,linestyle=:dash,label=&quot;simulated&quot;)</code></pre><img src="a15b8bc2.svg" alt="Example block output"/><h4 id="Flat-plate"><a class="docs-heading-anchor" href="#Flat-plate">Flat plate</a><a id="Flat-plate-1"></a><a class="docs-heading-anchor-permalink" href="#Flat-plate" title="Permalink"></a></h4><p>We can apply this method also to our flat plate example and compare it to the Biot-Savart method from the <code>PotentialFlow.jl</code> package.</p><p>See the notebook in the examples folder for the Biot-Savart solution.</p><p>Because we create the <code>PotentialFlow.jl</code> model with a moving plate instead of a uniform flow, we specify a translational velocity. The <code>GridPotentialFlow.jl</code> model will still use a moving body coordinate system and thus a uniform flow that equals the negative translational velocity.</p><pre><code class="language-julia hljs">c = 1.0;   # chord length
+
+ċ = -1.0;  # translational velocity
+α = -π/3;   # angle of attack
+
+σLE = 0.0;
+σTE = 0.0;
+
+Δt = 5e-2;
+tf = 1.0;
+T = 0.0:Δt:tf;</code></pre><pre><code class="language-julia hljs">Δx = 0.01
+xlim = (-0.5,2)
+ylim = (-1,1)
+g = PhysicalGrid(xlim,ylim,Δx);</code></pre><pre><code class="language-julia hljs">dsdx = 2
+plate = RigidBodyTools.Plate(c,dsdx*Δx)
+pfb = PotentialFlowBody(plate,edges=[1,length(plate)],σ=[SuctionParameter(σLE),SuctionParameter(σTE)])
+transform = RigidTransform((0.0,0.0),-π/3)
+update_body!(plate,transform);
+Δs = dlength(plate)
+maximum(Δs/Δx);</code></pre><p>As before, we create the initial vortices based on the time step and uniform flow and define a function that create the new point vortices for the subsequent time steps.</p><pre><code class="language-julia hljs">firstvLE = GridPotentialFlow.Vortex(plate.x[1]+3Δt*(-ċ)*cos(plate.α+π/2),plate.y[1]+3Δt*(-ċ)*sin(plate.α+π/2),0.0);
+firstvTE = GridPotentialFlow.Vortex(plate.x[end]+3Δt*(-ċ)*cos(plate.α+π/2),plate.y[end]+3Δt*(-ċ)*sin(plate.α+π/2),0.0);</code></pre><pre><code class="language-julia hljs">function createsheddedvortices(plate,oldvortices)
+
+    vLE = GridPotentialFlow.Vortex(2/3*plate.x[1]+1/3*oldvortices[end-1].x,2/3*plate.y[1]+1/3*oldvortices[end-1].y,0.0)
+    vTE = GridPotentialFlow.Vortex(2/3*plate.x[end]+1/3*oldvortices[end].x,2/3*plate.y[end]+1/3*oldvortices[end].y,0.0)
+
+    return vLE,vTE
+end</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">createsheddedvortices (generic function with 1 method)</code></pre><p>The model free stream should be the negative of the translational velocity of the plate.</p><pre><code class="language-julia hljs">model = VortexModel(g,bodies=[pfb],vortices=[firstvLE,firstvTE],U∞=(-ċ,0.0));</code></pre><p>Then we enter a time stepping loop and record the impulse every time we create new vortices. Note that because we release new vortices at every time step, it is not straightforward to use a multi-step time integration method like RK4 to advance the positions of the point vortices. Instead, we use forward Euler and the size of the positions vector increases every time step by the number of new vortices we insert. To advance the system one time step, we first need to solve the saddle-point system, set the strengths of the new vortices, subtract that circulation from the bodies, and calculate the vortex velocities with the saddle-point system solution. For convenience, these four operations are carried out internally if we would call <code>vortexvelocities!(model)</code>. However, if we want to have access to the solution of the saddle-point system, we can explicitly perform each operation as is done in the following time stepping loop. Note that we have to set the strengths of the new vortices before calling the <code>impulse</code> function, otherwise the new vortices won&#39;t be included in the calculation.</p><pre><code class="language-julia hljs">Px_hist = Float64[];
+Py_hist = Float64[];
+sol = solve(model);
+for tloc in T[2:end]
+    X = getvortexpositions(model) # gets bigger every time step because we add vortices
+    Ẋ = deepcopy(X)
+
+    solve!(sol, model)
+    setvortexstrengths!(model, sol.δΓ_vec, length(X.u)-1:length(X.u))
+    subtractcirculation!(model.bodies, sol.δΓ_vec)
+    Px, Py = impulse(model)
+
+    vortexvelocities!(Ẋ, model, sol.ψ)
+    X .= X .+ Ẋ*Δt
+    setvortexpositions!(model, X)
+
+    vLE, vTE = createsheddedvortices(plate,model.vortices)
+    pushvortices!(model,vLE,vTE)
+    push!(Px_hist,Px)
+    push!(Py_hist,Py)
+end</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">┌ Warning: Assignment to `X` in soft scope is ambiguous because a global variable by the same name exists: `X` will be treated as a new local. Disambiguate by using `local X` to suppress this warning or `global X` to assign to the existing global variable.
+└ @ 6.-Force-and-the-added-mass.md:256</code></pre><p>The force history can be obtained by taking finite differences of the impulse history.</p><pre><code class="language-julia hljs">Fx_hist = -diff(Px_hist)/Δt;
+Fy_hist = -diff(Py_hist)/Δt;</code></pre><p>We can now compare the positions of the point vortices by shifting the <code>PotentialFlow.jl</code> solution by <code>-tf*ċ</code> such that the origin of the frame of reference coincides with the center plate. Superimposing the <code>GridPotentialFlow.jl</code> solution then shows that the positions of the point vortices agree very well.</p><pre><code class="language-julia hljs">plot(plate,fillcolor=:black,fillrange=0,fillalpha=0.25,linecolor=:black,linewidth=2,xlim=xlim,ylim=ylim,xlabel=&quot;x&quot;,ylabel=&quot;y&quot;)
+scatter!(real.((v-&gt;v.z).(sys[2])).-tf*ċ,imag.((v-&gt;v.z).(sys[2])),color=:red,markersize=4,label=&quot;PotentialFlow.jl&quot;)
+scatter!(model.vortices.x,model.vortices.y,color=:blue,markersize=2,label=&quot;GridPotentialFlow.jl&quot;)</code></pre><img src="fbd2b6ac.svg" alt="Example block output"/><p>The vertical impulse and the vertical force (lift) can also be compared and show good agreement as well.</p><pre><code class="language-julia hljs">plot(xlabel=&quot;t&quot;,ylabel=&quot;Py&quot;)
+plot!(T[1:end-1],imag.(imp),color=:blue,label=&quot;PotentialFlow.jl&quot;)
+plot!(T[1:end-1],Py_hist,color=:red,label=&quot;GridPotentialFlow.jl&quot;)</code></pre><img src="c5838173.svg" alt="Example block output"/><pre><code class="language-julia hljs">plot(xlabel=&quot;t&quot;,ylabel=&quot;Fy&quot;)
+plot!(T[2:end-1],imag.(force),color=:blue,label=&quot;PotentialFlow.jl&quot;)
+plot!(T[2:end-1],Fy_hist,color=:red,label=&quot;GridPotentialFlow.jl&quot;)</code></pre><img src="6eac43b4.svg" alt="Example block output"/><h2 id="Added-mass"><a class="docs-heading-anchor" href="#Added-mass">Added mass</a><a id="Added-mass-1"></a><a class="docs-heading-anchor-permalink" href="#Added-mass" title="Permalink"></a></h2><p>The added mass tensor provides a measure of the inertial influence of the fluid on the body in response to changes in the body&#39;s translational or rotational motion. The coefficients of the added mass tensor of a body are obtained by computing the impulse components associated with a unit-valued component of motion. The motion&#39;s influence is both direct, via the surface velocity, and indirect, in the bound vortex sheet that develops on the surface.</p><p>The added mass for simple geometries can easiliy be calculated in an analytical way. For example, the entries of the translational added mass tensor for an ellipse with semi-major axis <span>$a$</span> and semi-minor axis <span>$b$</span> are <span>$m_{xx} = \rho \pi b^2$</span> for motion in the <span>$x$</span> direction, <span>$m_{yy} = \rho \pi a^2$</span> for motion in the <span>$y$</span>-direction, with the diagonal entries <span>$m_{xy}=m_{yx}=0$</span>. By using <code>addedmass</code> from this package we can approximate these results numerically. In this case, we have one body and the method will return a matrix with the entries</p><p class="math-container">\[\begin{bmatrix}
+m_{xx} &amp; m_{xy} \\
+m_{yx} &amp; m_{yy}
+\end{bmatrix}.\]</p><pre><code class="language-julia hljs">a = 0.5
+b = 0.25
+ellipse = Ellipse(a,b,Δx)
+pfb = PotentialFlowBody(ellipse)
+model = VortexModel(g,bodies=[pfb])
+M = GridPotentialFlow.addedmass(model)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">2×2 Matrix{Float64}:
+ 0.209462     9.61687e-17
+ 9.50845e-17  0.804017</code></pre><p>We can compare the values using the <code>@test</code> macro.</p><pre><code class="language-julia hljs">using Test
+@test isapprox(M[1,1], π*b^2, rtol=1e-1)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi"><span class="sgr32"><span class="sgr1">Test Passed</span></span></code></pre><pre><code class="language-julia hljs">@test isapprox(M[2,2], π*a^2, atol=1e-1)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi"><span class="sgr32"><span class="sgr1">Test Passed</span></span></code></pre><p>In the case of <span>$N$</span> bodies, <code>addedmass</code> returns the translational added mass tensor of size <span>$2N$</span>-by-<span>$2N$</span>. As an example, we will compute the added mass tensor for an array of cylinders. To compare it with an analytically obtained solution, we will calculate the added mass matrix tensor for the following gap-to-radius ratios.</p><pre><code class="language-julia hljs">GRratios = [0.1,0.2,0.3,0.4,0.5,0.6,0.8,1.0,1.2,1.4,1.6];</code></pre><p>For this case, the array consists of three rows of three cylinders.</p><pre><code class="language-julia hljs">n = 100
+rows = 3
+columns = 3
+N = rows*columns
+R = 0.20
+𝒱 = π*R^2
+bodies = fill(Circle(R,2*cellsize(g)),N);
+Δs = minimum(dlength(bodies[1]));</code></pre><p>We loop over the gap-to-radius ratios, position the bodies, and compute the ratio of the largest eigenvalue to the largest diagonal element of the translational added mass tensor. To position the bodies, we defined the method <code>rectangulararray</code> (see notebook in the examples folder).</p><pre><code class="language-julia hljs">using Statistics: mean
+using LinearAlgebra: eigen</code></pre><pre><code class="language-julia hljs">λoverMratios = zeros(length(GRratios))
+for idx in 1:length(GRratios)
+    #global bodies
+    gap = GRratios[idx]*R
+    spacing = 2*R+gap
+    bodycenters = rectangulararray(rows,columns,spacing)
+    for i in 1:N
+        Tf = RigidTransform((bodycenters.u[i],bodycenters.v[i]),0.0)
+        tmp_body = bodies[i]
+        #global bodies[i] = Tf(deepcopy(bodies[i]))
+        update_body!(tmp_body,Tf)
+        bodies[i] = deepcopy(tmp_body)
+    end
+    body_list = PotentialFlowBody.(bodies)
+    vm = VortexModel(g,bodies=body_list);
+    M = GridPotentialFlow.addedmass(vm)/𝒱
+    eigM = eigen(M);
+    max_eig_value_coef = maximum(real(eigM.values))
+    max_self_added_mass_coef = maximum(M)
+    λoverMratios[idx] = max_eig_value_coef/max_self_added_mass_coef
+end</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">┌ Warning: Assignment to `M` in soft scope is ambiguous because a global variable by the same name exists: `M` will be treated as a new local. Disambiguate by using `local M` to suppress this warning or `global M` to assign to the existing global variable.
+└ @ 6.-Force-and-the-added-mass.md:405</code></pre><p>The same ratios, obtained in an analytical way, are available in literature <sup class="footnote-reference"><a id="citeref-1" href="#footnote-1">[1]</a></sup> and can be used to verify the numerical values.</p><pre><code class="language-julia hljs">nineRodArrayChen = [2.3637,2.2092,2.1007,2.0120,1.9350,1.8665,1.7494,1.6531,1.5732,1.5066,1.4508];
+plot(xlabel=&quot;GR&quot;,ylabel=&quot;λ/max(Mij)&quot;)
+plot!(GRratios,nineRodArrayChen,label=&quot;Chen1975&quot;)
+plot!(GRratios,λoverMratios,label=&quot;GridPotentialFlow.jl&quot;)</code></pre><img src="ffcdfd2e.svg" alt="Example block output"/><hr/><p><em>This page was generated using <a href="https://github.com/fredrikekre/Literate.jl">Literate.jl</a>.</em></p><section class="footnotes is-size-7"><ul><li class="footnote" id="footnote-1"><a class="tag is-link" href="#citeref-1">1</a>Chen, S. S. (1975) &quot;Vibration of nuclear fuel bundles,&quot; <em>Nuclear Engineering and Design</em>, 35 (3), 399-–422.</li></ul></section></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../5.-Generalized-edge-conditions/">« 5. Generalized edge conditions</a><a class="docs-footer-nextpage" href="../../public/">Public Documentation »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.7.0 on <span class="colophon-date" title="Monday 23 September 2024 02:18">Monday 23 September 2024</span>. Using Julia version 1.10.5.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
